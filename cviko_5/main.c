@@ -19,13 +19,14 @@ int height(Node* node) {// get the height of the node
     return node->height;// return the height of the actuall node
 }
 
-int updateHeight(Node* node) {// update the height of the node
-    if (node == NULL) {// if the node is NULL, return 0
+int updateHeight(Node* node) {
+    if (node == NULL) {
         return 0;
     }
-    int leftChildHeight = height(node->leftChild);// get the height of the left child
-    int rightChildHeight = height(node->rightChild);// get the height of the right child
-    return (leftChildHeight > rightChildHeight ? leftChildHeight : rightChildHeight) + 1;// return the higher height of the children + 1
+    int leftChildHeight = height(node->leftChild);
+    int rightChildHeight = height(node->rightChild);
+    node->height = (leftChildHeight > rightChildHeight ? leftChildHeight : rightChildHeight) + 1;
+    return node->height;
 }
 
 Node* rightRotation(Node* subtreeParent){
@@ -71,7 +72,7 @@ Node* leftRotation(Node* subtreeParent){
     return subRightChild;
 }
 
-int getBalanceCoeficient(Node* currentNode){
+int getBalanceCoeficient(Node* currentNode){// balancing the tree
     if (currentNode == NULL)
     {
         return 0;
@@ -110,9 +111,9 @@ Node* insert(Node* root, long long inputId, char* inputFirstName, char* inputLas
         // Duplicate IDs are not allowed
         printf("Duplicate ID: %lld\n", inputId);
         return root;
-    }
+    }// up to this point, the code should be right, the issue is somewhere else
     
-    heightHandling(root);// update the height of the current node
+    updateHeight(root);// update the height of the current node
 
     int balance = getBalanceCoeficient(root);// get the balance coeficient of the current node
 
