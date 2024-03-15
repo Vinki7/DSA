@@ -1,0 +1,65 @@
+-1500,-1200000000
+-1500,-1100000000
+-1500,-100000000
+-1500,0
+-1499,0
+-3,-1200000000
+-3,-1100000000
+-3,-100000000
+-3,0
+-2,0
+-1,0
+0,-2550000000
+0,-255000000
+0,-245000000
+0,0
+0,245000000
+0,255000000
+0,2550000000
+1,0
+2,0
+3,0
+3,100000000
+3,1100000000
+3,1200000000
+1499,0
+1500,0
+1500,100000000
+1500,1100000000
+1500,1200000000
+
+
+Leading Zeros: Test numbers that have leading zeros before the decimal point.
+
++Example: 0,123 and 0,00123
+Trailing Zeros after the Decimal Point: Numbers that have trailing zeros after the decimal point can help check if your program correctly interprets the decimal part.
+
+Example: 123,45000 and 0,00600 (as you mentioned)
+No Decimal Part: Numbers that don't have a decimal part at all, which should technically be treated the same as if they had a decimal part of zero.
+
++Example: 456 (which should be treated like 456,0)
+Only Decimal Part (No Whole Number Part): Numbers that start directly with a decimal point but don't have a whole number part.
+
++Example: 0,789 (without leading digit)
+Maximal Precision: Numbers that use the maximum allowed number of digits after the decimal point.
+
++Example: 123,1234567890
+Minimal Precision (or No Precision): Numbers that have no digits after the decimal point or are whole numbers.
+
+-Example: 789, or just 789 (interpreted as 789,0)
+Negative Numbers: Since handling negative numbers could be different, especially if your code handles the sign separately.
+
++Example: -123,456 and -0,123
+Large Numbers: To check if your code correctly handles large values.
+
++Example: 1234567890,1234567890
+Boundary Conditions: Numbers that are at the start or end of your sequence, to check edge cases in the binary search.
+
++If your sequence is 1,2,3,4,5, test with 1 and 5.
+Not in Sequence: Numbers that are not present in the sequence to ensure your program correctly returns 0.
+
++If your sequence is 10,20,30,40, test with 15 or 25.
+Repeated Digits: Numbers with repeated digits can sometimes reveal issues in parsing or comparing.
+
+Example: 111,1111111111
+By using these types of numbers for debugging, you can comprehensively check the correctness of your code across different scenarios and ensure that it handles all aspects of rational number representation, comparison, and searching correctly.
