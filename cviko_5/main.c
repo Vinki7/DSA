@@ -76,7 +76,7 @@ int getBalanceCoeficient(Node* currentNode){
     return heightHandling(currentNode->leftChild) - heightHandling(currentNode->rightChild);
 }
 
-Node* insert(Node* root, long long inputId, char* inputFirstName, char* inputLastName, char* inputBirthday){
+Node* insert(Node* root, long long inputId, char* inputFirstName, char* inputLastName, char* inputBirthday){// The function works well, fluently, without any issues
     /* Thanks to the recursive approach, we can handle the insertion of the node in the AVL tree in a very simple way. When pointer which is passed
      * to the function is NULL, we can simply allocate the memory for the new node and return it. it will blow up the stack and return the pointer of 
      * the new node to the previous call of the function. This way we can easily handle the insertion of the node to the AVL tree.
