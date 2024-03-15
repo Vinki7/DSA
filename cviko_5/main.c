@@ -12,20 +12,20 @@ typedef struct node{    // node handling
     struct node *leftChild;    // lower child
 }Node;
 
-int height(Node* node) {
-    if (node == NULL) {
+int height(Node* node) {// get the height of the node
+    if (node == NULL) {// if the node is NULL, return 0
         return 0;
     }
-    return node->height;
+    return node->height;// return the height of the actuall node
 }
 
-int updateHeight(Node* node) {
-    if (node == NULL) {
+int updateHeight(Node* node) {// update the height of the node
+    if (node == NULL) {// if the node is NULL, return 0
         return 0;
     }
-    int leftHeight = height(node->leftChild);
-    int rightHeight = height(node->rightChild);
-    return (leftHeight > rightHeight ? leftHeight : rightHeight) + 1;
+    int leftChildHeight = height(node->leftChild);// get the height of the left child
+    int rightChildHeight = height(node->rightChild);// get the height of the right child
+    return (leftChildHeight > rightChildHeight ? leftChildHeight : rightChildHeight) + 1;// return the higher height of the children + 1
 }
 
 Node* rightRotation(Node* subtreeParent){
@@ -49,8 +49,8 @@ Node* rightRotation(Node* subtreeParent){
       C   A
     */
     // Update the heights
-    heightHandling(subtreeParent);
-    heightHandling(subLeftChild);
+    updateHeight(subtreeParent);
+    updateHeight(subLeftChild);
 
     // Return the new root of the subtree (pointer)
     return subLeftChild;
@@ -65,8 +65,8 @@ Node* leftRotation(Node* subtreeParent){
     subtreeParent->rightChild = subSubLeftChild;
 
     // Update the heights
-    heightHandling(subtreeParent);
-    heightHandling(subRightChild);
+    updateHeight(subtreeParent);
+    updateHeight(subRightChild);
 
     return subRightChild;
 }
@@ -76,7 +76,7 @@ int getBalanceCoeficient(Node* currentNode){
     {
         return 0;
     }
-    return heightHandling(currentNode->leftChild) - heightHandling(currentNode->rightChild);
+    return updateHeight(currentNode->leftChild) - updateHeight(currentNode->rightChild);
 }
 
 Node* insert(Node* root, long long inputId, char* inputFirstName, char* inputLastName, char* inputBirthday){// The function works well, fluently, without any issues
