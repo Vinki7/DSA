@@ -12,17 +12,20 @@ typedef struct node{    // node handling
     struct node *leftChild;    // lower child
 }Node;
 
-int heightHandling(Node* currentNode){
-    if (currentNode == NULL){
+int height(Node* node) {
+    if (node == NULL) {
         return 0;
     }
+    return node->height;
+}
 
-    // Here is used the recursion again, just to perform height calculations for the AVL tree
-    int leftSubtreeHeight = heightHandling(currentNode->leftChild);
-    int rightSubtreeHeight = heightHandling(currentNode->rightChild);
-    currentNode->height = ((leftSubtreeHeight > rightSubtreeHeight)? leftSubtreeHeight : rightSubtreeHeight) + 1;// update the height of the current node based on the height of the subtrees ==> if the left subtree is higher, the height of the current node is the height of the left subtree + 1, otherwise the height of the right subtree + 1
-
-    return currentNode->height;
+int updateHeight(Node* node) {
+    if (node == NULL) {
+        return 0;
+    }
+    int leftHeight = height(node->leftChild);
+    int rightHeight = height(node->rightChild);
+    return (leftHeight > rightHeight ? leftHeight : rightHeight) + 1;
 }
 
 Node* rightRotation(Node* subtreeParent){
