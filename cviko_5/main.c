@@ -147,27 +147,34 @@ void freeTree(Node* root){
     free(root);
 }
 
-void searchNode(Node* root, long long leftIntervalId, long long rightIntervalId){// There is an issue here, chato will not help -> here comes the debugging
+void searchNode(Node* root, long long leftIntervalId, long long rightIntervalId, int* firstOutputFlag){// search the node in the interval
     if (root == NULL){
         return;
     }
     
     if (root->id >= leftIntervalId && root->id <= rightIntervalId) {// if the current node is in the interval, print it
-        printf("%lld %s %s %s\n", root->id, root->firstname, root->lastname, root->birthday);
+        if(*firstOutputFlag == 0){
+            *firstOutputFlag = 1;
+            printf("%lld %s %s %s", root->id, root->firstname, root->lastname, root->birthday);
+        }else{
+            printf("\n%lld %s %s %s", root->id, root->firstname, root->lastname, root->birthday);
+        }   
     }
 
     if (root->id >= leftIntervalId) {// if the left child is in the interval, search it
-        searchNode(root->leftChild, leftIntervalId, rightIntervalId);
+        searchNode(root->leftChild, leftIntervalId, rightIntervalId, firstOutputFlag);
     }
     if (root->id <= rightIntervalId) {// if the right child is in the interval, search it
-        searchNode(root->rightChild, leftIntervalId, rightIntervalId);
+        searchNode(root->rightChild, leftIntervalId, rightIntervalId, firstOutputFlag);
+    }else{
+        return;// if the node is not in the interval, end recursion
     }
 }
 
 int main(void){
-    Node* avlTree = NULL;// pointer to the root
-    //AVLtree.parrent = NULL;
+    Node* avlTree = NULL;// pointer to the root of the AVL tree
     long long inputId;
+    int firstOutputFlag = 0;
     char line[1024], inputFirstname[24], inputLastName[24], inputBirthDay[16], operation;
     while (fgets(line, sizeof(line), stdin) != NULL)// read the input line by line
     {
@@ -187,14 +194,14 @@ int main(void){
             int number_of_read = sscanf(line+2, "%lld", &leftIntervalId); 
             
             int num_items_read = sscanf(line + number_of_read + 3, "%lld", &rightIntervalId);
-            if (num_items_read != 1) {
+            if (num_items_read <= 1) {//
                 rightIntervalId = leftIntervalId; // If no right interval ID provided, set it to left interval ID
+                searchNode(avlTree, leftIntervalId, rightIntervalId, &firstOutputFlag);
             } else if (rightIntervalId < leftIntervalId) {
-                long long tmp = leftIntervalId;
-                leftIntervalId = rightIntervalId;
-                rightIntervalId = tmp;
+                searchNode(avlTree, rightIntervalId, leftIntervalId, &firstOutputFlag);
+            } else {
+                searchNode(avlTree, leftIntervalId, rightIntervalId, &firstOutputFlag);
             }
-            searchNode(avlTree, leftIntervalId, rightIntervalId);
             break;
         
         case 'd':
