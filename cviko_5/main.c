@@ -205,8 +205,8 @@ int main(void){
             long long leftIntervalId, rightIntervalId;
             int number_of_read = sscanf(line+2, "%lld", &leftIntervalId); 
             
-            int num_items_read = sscanf(line + number_of_read + 3, "%lld", &rightIntervalId);
-            if (num_items_read <= 1) {//
+            int num_items_read = sscanf(line + number_of_read + 4, "%lld", &rightIntervalId);
+            if (num_items_read < 1) {
                 rightIntervalId = leftIntervalId; // If no right interval ID provided, set it to left interval ID
                 searchNode(avlTree, leftIntervalId, rightIntervalId, &firstOutputFlag);
             } else if (rightIntervalId < leftIntervalId) {
