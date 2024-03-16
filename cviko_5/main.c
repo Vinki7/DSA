@@ -161,15 +161,27 @@ void searchNode(Node* root, long long leftIntervalId, long long rightIntervalId,
         }   
     }
 
-    if (root->id >= leftIntervalId) {// if the left child is in the interval, search it
+    if (root->id > leftIntervalId) {// if the left child is in the interval, search it
         searchNode(root->leftChild, leftIntervalId, rightIntervalId, firstOutputFlag);
     }
-    if (root->id <= rightIntervalId) {// if the right child is in the interval, search it
+    if (root->id < rightIntervalId) {// if the right child is in the interval, search it
         searchNode(root->rightChild, leftIntervalId, rightIntervalId, firstOutputFlag);
-    }else{
-        return;// if the node is not in the interval, end recursion
     }
 }
+
+Node* lowesValue(Node* node) {// get the node with the smallest value
+    Node* current = node;
+
+    // Loop down to find the leftmost leaf
+    while (current->leftChild != NULL) {
+        current = current->leftChild;
+    }
+
+    return current;
+}
+
+
+
 
 int main(void){
     Node* avlTree = NULL;// pointer to the root of the AVL tree
@@ -205,9 +217,10 @@ int main(void){
             break;
         
         case 'd':
-            /* code */
+            long long deleteId;
+            sscanf(line + 2, "%lld", &deleteId);
+            avlTree = nodeEvaporation(avlTree, deleteId);
             break;
-
         default:
             break;
         }
