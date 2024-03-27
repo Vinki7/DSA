@@ -19,7 +19,7 @@ int height(Node* node) {// get the height of the node
     return node->height;// return the height of the actuall node
 }
 
-int updateHeight(Node* node) {
+int updateHeight(Node* node) { // update the height of the node
     if (node == NULL) {
         return 0;
     }
@@ -147,27 +147,26 @@ void freeTree(Node* root){
     free(root);
 }
 
-void searchNode(Node* root, long long leftIntervalId, long long rightIntervalId, int* firstOutputFlag){// search the node in the interval
-    if (root == NULL){
+void searchNode(Node* root, long long leftIntervalId, long long rightIntervalId, int* firstOutputFlag) {
+    if (root == NULL) {
         return;
     }
-    
-    if (root->id >= leftIntervalId && root->id <= rightIntervalId) {// if the current node is in the interval, print it
-        if(*firstOutputFlag == 0){
-            *firstOutputFlag = 1;
-            printf("%lld %s %s %s", root->id, root->firstname, root->lastname, root->birthday);
-        }else{
-            printf("\n%lld %s %s %s", root->id, root->firstname, root->lastname, root->birthday);
-        }   
-    }
 
-    if (root->id >= leftIntervalId) {// if the left child is in the interval, search it
+    if (root->id > leftIntervalId) { // Traverse left subtree if the node's ID is greater than the left interval ID
         searchNode(root->leftChild, leftIntervalId, rightIntervalId, firstOutputFlag);
     }
-    if (root->id <= rightIntervalId) {// if the right child is in the interval, search it
+
+    if (root->id >= leftIntervalId && root->id <= rightIntervalId) { // Output node if its ID falls within the interval
+        if (*firstOutputFlag == 0) {
+            *firstOutputFlag = 1;
+            printf("%lld %s %s %s", root->id, root->firstname, root->lastname, root->birthday);
+        } else {
+            printf("\n%lld %s %s %s", root->id, root->firstname, root->lastname, root->birthday);
+        }
+    }
+
+    if (root->id < rightIntervalId) { // Traverse right subtree if the node's ID is less than the right interval ID
         searchNode(root->rightChild, leftIntervalId, rightIntervalId, firstOutputFlag);
-    }else{
-        return;// if the node is not in the interval, end recursion
     }
 }
 
