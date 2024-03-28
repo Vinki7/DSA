@@ -157,11 +157,11 @@ int main(void){
 
             break;
         case 's':
-            char firstname[20];
-            char lastname[20];
-            char dateOfBirth[11];
+            firstname[20];
+            lastname[20];
+            dateOfBirth[11];
             sscanf(line+2, "%s %s %s", firstname, lastname, dateOfBirth);
-            int key = hashFunction(firstname, lastname);
+            key = hashFunction(firstname, lastname);
             HashNode *searchedNode = searchNode(hashTable , firstname, lastname, dateOfBirth, key);
             if (searchedNode != NULL)
             {
