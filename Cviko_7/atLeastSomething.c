@@ -4,7 +4,7 @@
 #define FIRSTNAME_SIZE 20
 #define LASTNAME_SIZE 20
 #define DATE_OF_BIRTH 11
-#define LINE_LEN 100
+#define LINE_LEN 200
 
 // Holds the data of an account
 typedef struct client
@@ -13,7 +13,7 @@ typedef struct client
     char firstname[FIRSTNAME_SIZE];
     char lastname[LASTNAME_SIZE];
     char dateOfBirth[DATE_OF_BIRTH];
-    double balance;
+    double ballance;
 }Client;
 
 typedef struct hashNode{
@@ -21,6 +21,17 @@ typedef struct hashNode{
     int key;
     struct hashNode* next;
 }HashNode;
+/*
+* Elementary functions ----------------------------------------------------------------------------------
+*/
+// Return length of the provided string
+int customStringLength(char *inputString) {
+    int len = 0;
+    while (inputString[len] != '\0') {
+        len++;
+    }
+    return len;
+}
 
 int hashFunction(const char *firstname, const char *lastname, const char *dateOfBirth) {// djb2 hash function, which is a simple hash function created by Daniel J. Bernstein
     unsigned int hash = 5381; // Initial hash value
@@ -45,12 +56,10 @@ int hashFunction(const char *firstname, const char *lastname, const char *dateOf
     return hash % HASH_TABLE_SIZE; // Ensure the hash fits within the table size
 }
 
-/*
-* String Formating part--------------------------------------------------------------------
-*/
+
 
 // Custom atof function
-double customAtolf(char *ballanceValidation) {// Right version
+double customAtolf(char *ballanceValidation) {
     double result = 0;
     int i = 0;
 
@@ -65,33 +74,13 @@ double customAtolf(char *ballanceValidation) {// Right version
     return result;
 }
 
-char* doubleToString(double value) {
-    char *result = (char *)malloc(20 * sizeof(char));
-    sprintf(result, "%.2lf", value);
-    int i = 0;
-
-    while (result[i] != '\0') {
-        if (result[i] == '.') {// Point instead of comma -> "Propper formating" (:
-            result[i] = ',';// Replace comma with point
-            break;
-        }
-        i++;
+void customStringCopy(char *result, char *source) {// not used in my code actually, snprintf() works better
+    while (*source) {
+        *result = *source;
+        *result++;
+        source++;
     }
-
-    return result;
-}
-
-/*
-* String operations ---------------------------------------------------------------------------
-*/
-
-// Return length of the provided string
-int customStringLength(char *inputString) {// Unnecessary
-    int len = 0;
-    while (inputString[len] != '\0') {
-        len++;
-    }
-    return len;
+    *result = '\0'; // Add null  to the end of the destination string
 }
 
 int customStringCompare(char *firstString,char *secondString) {
@@ -112,7 +101,11 @@ int customStringCompare(char *firstString,char *secondString) {
     }
 }
 
-void freeTable(HashNode *hashTable[]){// MAybe unnecessary
+/*
+* functions used for hash table manipulation ------------------------------------------------------------
+*/
+
+void freeTable(HashNode *hashTable[]){
     for (int i = 0; i < HASH_TABLE_SIZE; i++) {
         HashNode *current = hashTable[i];
         while (current != NULL) {
@@ -142,58 +135,55 @@ HashNode* searchNode(HashNode **hashTable, char *firstname, char* lastname, char
     return searchedNode;
 }
 
-int insertHashNode(HashNode *hashTable[], char* firstname, char* lastname, char* dateOfBirth, double balance, int key) {
-    // New node
-    HashNode *newNode = (HashNode*)malloc(sizeof(HashNode));
-    if (newNode == NULL) {
-        
-        return 1;
-    }
-    // Fill in the data
-    snprintf(newNode->value.firstname, FIRSTNAME_SIZE, "%s", firstname);
-    snprintf(newNode->value.lastname, LASTNAME_SIZE, "%s", lastname);
-    snprintf(newNode->value.dateOfBirth, DATE_OF_BIRTH, "%s", dateOfBirth);
-    newNode->value.balance = balance;
-    newNode->key = key;
-    newNode->next = NULL;
-
-    // If the bucket is empty, insert as the first node
-    if (hashTable[key] == NULL) {
-        hashTable[key] = newNode;
-        return 0;
-    }
-
-    // Otherwise, traverse the linked list and insert at the end
-    HashNode *currentNodePtr = hashTable[key];
-    while (currentNodePtr->next != NULL) {
-        if (customStringCompare(currentNodePtr->value.firstname, firstname) == 0 &&
-            customStringCompare(currentNodePtr->value.lastname, lastname) == 0 &&
-            customStringCompare(currentNodePtr->value.dateOfBirth, dateOfBirth) == 0) {
-            //free
-            free(newNode);
-            return 1;
-        }
-        currentNodePtr = currentNodePtr->next;
-    }
-    // Insert the new node at the end of the list
-    currentNodePtr->next = newNode;
-    return 0;
-}
-
-
-int updateBallance(HashNode **hashTable, char *firstname, char *lastname, char *dateOfBirth, double balance, int key){
-    HashNode *searchedNode = searchNode(hashTable, firstname, lastname, dateOfBirth, key);
-    if (searchedNode != NULL)
+// Insert a new node into the hash table, returns 1 when unsuccessful
+int insertHashNode(HashNode **hashTable, char *firstname, char *lastname, char *dateOfBirth, double ballance, int key){
+    
+    HashNode *validation = searchNode(hashTable, firstname, lastname, dateOfBirth, key);
+    if (validation != NULL)
     {
-        if ((searchedNode->value.balance + balance) >= 0)
+        return 1;
+    }else{
+        if (hashTable[key] == NULL)
         {
-            searchedNode->value.balance += balance;
-            return 0;
+            // Alloc. the first node of the cluster
+            hashTable[key] = (HashNode *)malloc(sizeof(HashNode));
+            if (hashTable[key] == NULL) {
+                // Handle memory alloc. failure
+                return 1;
+            }
+            // Define next node address
+            hashTable[key]->next = NULL;
+            // Store key
+            hashTable[key]->key = key;
+            // Value part
+            snprintf(hashTable[key]->value.firstname, FIRSTNAME_SIZE, "%s", firstname);
+            snprintf(hashTable[key]->value.lastname, LASTNAME_SIZE, "%s", lastname);
+            snprintf(hashTable[key]->value.dateOfBirth, DATE_OF_BIRTH, "%s", dateOfBirth);
+            hashTable[key]->value.ballance = ballance;
+
         }else{
-            return 1;
+            // Chaining
+            
+            HashNode *currentNodePtr = hashTable[key];
+            while (currentNodePtr->next != NULL)
+            {
+                currentNodePtr = currentNodePtr->next;
+            }
+            currentNodePtr->next = (HashNode *)malloc(sizeof(HashNode));
+            currentNodePtr = currentNodePtr->next;
+            // Set pointer to the next element to NULL 
+            currentNodePtr->next = NULL;       
+            // Store key
+            currentNodePtr->key = key;
+            // Value part
+            snprintf(currentNodePtr->value.firstname, FIRSTNAME_SIZE, "%s", firstname);
+            snprintf(currentNodePtr->value.lastname, LASTNAME_SIZE, "%s", lastname);
+            snprintf(currentNodePtr->value.dateOfBirth, DATE_OF_BIRTH, "%s", dateOfBirth);
+            currentNodePtr->value.ballance = ballance;
         }
+
     }
-    return 1;
+    return 0;
 }
 
 // Delete a node from the hash table, returns 1 when unsuccessful
@@ -218,10 +208,10 @@ int removeHashNode(HashNode **hashTable, char *firstname, char* lastname, char *
         while (prevNodePtr != NULL && currentNodePtr != NULL) {
             if (customStringCompare(currentNodePtr->value.firstname, firstname) == 0 &&
                 customStringCompare(currentNodePtr->value.lastname, lastname) == 0 &&
-                customStringCompare(currentNodePtr->value.dateOfBirth, dateOfBirth) == 0) {// Match!
-                prevNodePtr->next = currentNodePtr->next;// Edit pointers
+                customStringCompare(currentNodePtr->value.dateOfBirth, dateOfBirth) == 0) {
+                prevNodePtr->next = currentNodePtr->next;
                 free(currentNodePtr);
-                currentNodePtr = NULL;// ref. to NULL
+                currentNodePtr = NULL;
                 return 0;
             }
             prevNodePtr = currentNodePtr;
@@ -232,6 +222,38 @@ int removeHashNode(HashNode **hashTable, char *firstname, char* lastname, char *
 }
 
 
+char *doubleToString(double value) {// format handling
+    char *result = (char *)malloc(20 * sizeof(char));
+    sprintf(result, "%.2lf", value);
+    int i = 0;
+
+    while (result[i] != '\0') {
+        if (result[i] == '.') {// Point instead of comma -> "Propper formating" (:
+            result[i] = ',';// Replace comma with point
+            break;
+        }
+        i++;
+    }
+
+    return result;
+}
+
+
+int updateBallance(HashNode **hashTable, char *firstname, char *lastname, char *dateOfBirth, double ballance, int key){
+    HashNode *searchedNode = searchNode(hashTable, firstname, lastname, dateOfBirth, key);
+    if (searchedNode != NULL)
+    {
+        if ((searchedNode->value.ballance + ballance) >= 0)// limit handling (balance >= 0)
+        {
+            searchedNode->value.ballance += ballance;
+            return 0;
+        }else{
+            return 1;
+        }
+    }
+    return 1;
+}
+
 
 int main(void){
     
@@ -241,11 +263,11 @@ int main(void){
     char firstname[FIRSTNAME_SIZE];
     char lastname[LASTNAME_SIZE];
     char dateOfBirth[DATE_OF_BIRTH];
-    char ballanceValidation[20];
-    double balance;
+    char ballanceValidation[40];
+    double ballance;
     int firstOutput = 1;
 
-    while (fgets(line, sizeof(line), stdin) != NULL){
+    while (fgets(line, sizeof(line), stdin) != NULL){// read input with every iteration, break on end of input
         sscanf(line, "%c", &opCode);// Get the operation code
         int wrongIput = 0;
         switch (opCode)
@@ -254,37 +276,58 @@ int main(void){
             sscanf(line+2, "%s %s %s %s", firstname, lastname, dateOfBirth, ballanceValidation);
             if (firstname[0] != '\0' && lastname[0] != '\0' && dateOfBirth[0] != '\0' && ballanceValidation[0] != '\0')
             {
-                balance = customAtolf(ballanceValidation);
-                wrongIput = insertHashNode(hashTable, firstname, lastname, dateOfBirth, balance, hashFunction(firstname, lastname, dateOfBirth));// insert client and get flag
+                ballance = customAtolf(ballanceValidation);// convert
+                wrongIput = insertHashNode(hashTable, firstname, lastname, dateOfBirth, ballance, hashFunction(firstname, lastname, dateOfBirth));
             }else{
                 wrongIput = 1;
             }
-
+            // ↓↓↓ failure handled ↓↓↓
             if (wrongIput == 1)
             {
-                printf("%sinsert failed", (firstOutput == 0)? "\n": "");// throw err message
-                firstOutput = 0;
+                if (firstOutput == 1)
+                {
+                    printf("insert failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\ninsert failed");
+                }
             }
+
             break;
         
         case 's':
             sscanf(line+2, "%s %s %s", firstname, lastname, dateOfBirth);
             if (firstname[0] != '\0' && lastname[0] != '\0' && dateOfBirth[0] != '\0')
             {
-                HashNode *searchedNode = searchNode(hashTable, firstname, lastname, dateOfBirth, hashFunction(firstname, lastname, dateOfBirth));//get node
+                HashNode *searchedNode = searchNode(hashTable, firstname, lastname, dateOfBirth, hashFunction(firstname, lastname, dateOfBirth));
                 if (searchedNode != NULL)// If the search was successful
                 {
-                    printf("%s%s", (firstOutput == 0)? "\n": "", doubleToString(searchedNode->value.balance));// print out result
-                    firstOutput = 0;
-
+                    if (firstOutput == 1)
+                    {
+                        printf("%s", doubleToString(searchedNode->value.ballance));
+                        firstOutput = 0;
+                    }else{
+                        printf("\n%s", doubleToString(searchedNode->value.ballance));
+                    }
+                // ↓↓↓ failure handled ↓↓↓
                 }else{
-                    printf("%ssearch failed", (firstOutput == 0)? "\n": "");
-                    firstOutput = 0;
+                    if (firstOutput == 1)
+                    {
+                        printf("search failed");
+                        firstOutput = 0;
+                    }else{
+                        printf("\nsearch failed");
+                    }
                     
                 }
             }else{
-                printf("%ssearch failed", (firstOutput == 0)? "\n": "");
-                firstOutput = 0;
+                if (firstOutput == 1)
+                {
+                    printf("search failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\nsearch failed");
+                }
             }
             break;
 
@@ -292,31 +335,40 @@ int main(void){
             sscanf(line+2, "%s %s %s", firstname, lastname, dateOfBirth);
             if (firstname[0] != '\0' && lastname[0] != '\0' && dateOfBirth[0] != '\0')
             {
-                wrongIput = removeHashNode(hashTable, firstname, lastname, dateOfBirth, hashFunction(firstname, lastname, dateOfBirth));// make delete
+                wrongIput = removeHashNode(hashTable, firstname, lastname, dateOfBirth, hashFunction(firstname, lastname, dateOfBirth));// success
             }else{
                 wrongIput = 1;
             }
-            if (wrongIput == 1)
+            if (wrongIput == 1)// failure
             {
-                printf("%sdelete failed", (firstOutput == 0)? "\n": "");
-                firstOutput = 0;
-
+                if (firstOutput == 1)
+                {
+                    printf("delete failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\ndelete failed");
+                }
             }
             break;
         
-        case 'u':
+        case 'u': //update
             sscanf(line+2, "%s %s %s %s", firstname, lastname, dateOfBirth, ballanceValidation);
-            if (firstname[0] != '\0' && lastname[0] != '\0' && dateOfBirth[0] != '\0' && ballanceValidation[0] != '\0')
+            if (firstname[0] != '\0' && lastname[0] != '\0' && dateOfBirth[0] != '\0' && ballanceValidation[0] != '\0')//validation
             {
-                balance = customAtolf(ballanceValidation);
-                wrongIput = updateBallance(hashTable, firstname, lastname, dateOfBirth, balance, hashFunction(firstname, lastname, dateOfBirth));
+                ballance = customAtolf(ballanceValidation);
+                wrongIput = updateBallance(hashTable, firstname, lastname, dateOfBirth, ballance, hashFunction(firstname, lastname, dateOfBirth));
             }else{
                 wrongIput = 1;
             }
-            if (wrongIput == 1)
+            if (wrongIput == 1)// failure
             {
-                printf("%supdate failed", (firstOutput == 0)? "\n": "");
-                firstOutput = 0;
+                if (firstOutput == 1)
+                {
+                    printf("update failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\nupdate failed");
+                }
             }
             break;
         

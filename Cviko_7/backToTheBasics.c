@@ -1,37 +1,87 @@
-#include <stdlib.h>
 #include <stdio.h>
-#define HASH_TABLE_SIZE 10
+#include <stdlib.h>
+#define HASH_TABLE_SIZE 10000
+#define FIRSTNAME_SIZE 20
+#define LASTNAME_SIZE 20
+#define DATE_OF_BIRTH 11
+#define LINE_LEN 100
 
-typedef struct client{// Data structure that holds the data of the client - storage of the data
-    char firstName[20];// Represents the first part of the key
-    char lastName[20];// Represents the second part of the key
-    char dateOfBirth[11];
-    float ballance;
-}Client;
-
-typedef struct hashNode{
-    Client value;
-    struct hashNode *next;
-    int key;
-}HashNode;
+// Holds the data of an account
+typedef struct client
+{
+    // Data
+    char firstname[FIRSTNAME_SIZE];
+    char lastname[LASTNAME_SIZE];
+    char dateOfBirth[DATE_OF_BIRTH];
+    double balance;
+    struct client *next;
+} Client;
 
 
-int customStrLen(char *str){
+
+
+int hashFunction(const char *firstname, const char *lastname, const char *dateOfBirth) {// djb2 hash function, which is a simple hash function created by Daniel J. Bernstein
+    unsigned int hash = 5381; // Initial hash value
+
+    // Hash the firstname
+    for (int i = 0; firstname[i] != '\0'; i++) {
+        hash = ((hash << 5) + hash) + firstname[i]; // Equivalent to: hash * 33 + firstname[i]
+    }
+
+    // Hash the lastname
+    for (int i = 0; lastname[i] != '\0'; i++) {
+        hash = ((hash << 5) + hash) + lastname[i]; // Equivalent to: hash * 33 + lastname[i]
+    }
+
+    // Hash the dateOfBirth
+    for (int i = 0; dateOfBirth[i] != '\0'; i++) {
+        if (dateOfBirth[i] != '.') {
+            hash = ((hash << 5) + hash) + dateOfBirth[i]; // Equivalent to: hash * 33 + dateOfBirth[i]
+        }
+    }
+
+    return hash % HASH_TABLE_SIZE; // Ensure the hash fits within the table size
+}
+
+/*
+* String Formating part--------------------------------------------------------------------
+*/
+
+// Custom atof function
+double customAtolf(char *ballanceValidation) {// Right version
+    double result = 0;
     int i = 0;
-    while(str[i] != '\0'){
+
+    while (ballanceValidation[i] != '\0') {
+        if (ballanceValidation[i] == ',') {// Point instead of comma -> "Propper formating" (:
+            ballanceValidation[i] = '.';// Replace comma with point
+            break;
+        }
         i++;
     }
-    return i;
+    sscanf(ballanceValidation, "%lf", &result);// Convert string to float
+    return result;
 }
 
-void customStringCopy(char *result, const char *source) {
-    while (*source) {
-        *result = *source;
-        result++;
-        source++;
+char* doubleToString(double value) {
+    char *result = (char *)malloc(20 * sizeof(char));
+    sprintf(result, "%.2lf", value);
+    int i = 0;
+
+    while (result[i] != '\0') {
+        if (result[i] == '.') {// Point instead of comma -> "Propper formating" (:
+            result[i] = ',';// Replace comma with point
+            break;
+        }
+        i++;
     }
-    *result = '\0'; // Add null terminator to the end of the destination string
+
+    return result;
 }
+
+/*
+* String operations ---------------------------------------------------------------------------
+*/
 
 int customStringCompare(char *firstString,char *secondString) {
     while (*firstString && *secondString) {
@@ -51,150 +101,154 @@ int customStringCompare(char *firstString,char *secondString) {
     }
 }
 
-void freeTable(HashNode *hashTable[]){
+void myStrCopy(char *dest, const char *src, size_t maxLen) {
+    size_t i;
+    for (i = 0; i < maxLen - 1 && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    dest[i] = '\0'; // Ujistěte se, že je řetězec správně ukončen
+}
+
+void printTable(Client *hashTable[]) {
     for (int i = 0; i < HASH_TABLE_SIZE; i++) {
-        HashNode *current = hashTable[i];
-        while (current != NULL) {
-            HashNode *temp = current;
-            current = current->next;
-            free(temp);
-        }
-    }
-}
-
-// Hash function returns the index of the new key, encapsulates the logic of the hash function
-int hashFunction(char *firstname, char *lastname){
-    int sumOfCharValues = 0;
-    for (int i = 0; i < customStrLen(firstname); i++) {
-        sumOfCharValues += firstname[i];
-    }
-    for (int i = 0; i < customStrLen(lastname); i++) {
-        sumOfCharValues += lastname[i];
-    }
-    return sumOfCharValues % HASH_TABLE_SIZE;
-}
-
-void insertHashNode(HashNode **hashTable, char *firstname, char *lastname, char *dateOfBirth, float ballance, int key){
-    
-    if (hashTable[key] == NULL)
-    {
-        // Alloc. the first node of the cluster
-        hashTable[key] = (HashNode *)malloc(sizeof(HashNode));
-        // Define next node address
-        hashTable[key]->next = NULL;
-        // Store key
-        hashTable[key]->key = key;
-        // Value part
-        customStringCopy(hashTable[key]->value.firstName, firstname);
-        customStringCopy(hashTable[key]->value.lastName, lastname);
-        customStringCopy(hashTable[key]->value.dateOfBirth, dateOfBirth);
-        hashTable[key]->value.ballance = ballance;
-    }else{
-        HashNode *currentNodePtr = hashTable[key];
-        while (currentNodePtr->next != NULL)
-        {
-            currentNodePtr = currentNodePtr->next;
-        }
-        currentNodePtr->next = (HashNode *)malloc(sizeof(HashNode));
-        currentNodePtr = currentNodePtr->next;
-        // Set pointer to the next element to NULL 
-        currentNodePtr->next = NULL;       
-        // Store key
-        currentNodePtr->key = key;
-        // Value part
-        customStringCopy(currentNodePtr->value.firstName, firstname);
-        customStringCopy(currentNodePtr->value.lastName, lastname);
-        customStringCopy(currentNodePtr->value.dateOfBirth, dateOfBirth);
-        currentNodePtr->value.ballance = ballance;
-    }
-}
-
-
-HashNode* searchNode(HashNode **hashTable, char *firstname, char* lastname, char *dateOfBirth, int key){
-
-    HashNode *searchedNode = NULL;
-    HashNode *currentNodePtr = hashTable[key];
-    while (currentNodePtr != NULL)
-    {
-        if (customStringCompare(currentNodePtr->value.firstName, firstname) == 0 && customStringCompare(currentNodePtr->value.lastName, lastname) == 0 && customStringCompare(currentNodePtr->value.dateOfBirth, dateOfBirth) == 0)
-        {
-            searchedNode = currentNodePtr;
-            return searchedNode;
-        }
-        currentNodePtr = currentNodePtr->next;
-    }
-    return searchedNode;
-}
-
-
-int main(void){
-    
-    char line[100];
-    char command;
-    HashNode *hashTable[HASH_TABLE_SIZE] = {NULL};
-    int numberOfOutputs = 0;
-
-    while (fgets(line, sizeof(line), stdin) != NULL)// read the input line by line
-    {
-        if (sscanf(line, "%c", &command) < 1)// nothing at the input -> skip current iteration
-        {
-            continue;
-        }
-        
-        switch (command)
-        {
-        case 'i':
-            char firstname[20];
-            char lastname[20];
-            char dateOfBirth[11];
-            int wholePart;
-            float decimalPart;
-            sscanf(line+2, "%s %s %s %d,%f", firstname, lastname, dateOfBirth, &wholePart, &decimalPart);
-            float ballance = (float)wholePart + (decimalPart/100);
-            int key = hashFunction(firstname, lastname);
-            insertHashNode(hashTable , firstname, lastname, dateOfBirth, ballance, key);
-//            printf("\n%.2f\n%d", (*hashTable)[key].value.ballance, (*hashTable)[key].key);
-
-            break;
-        case 's':
-            firstname[20];
-            lastname[20];
-            dateOfBirth[11];
-            sscanf(line+2, "%s %s %s", firstname, lastname, dateOfBirth);
-            key = hashFunction(firstname, lastname);
-            HashNode *searchedNode = searchNode(hashTable , firstname, lastname, dateOfBirth, key);
-            if (searchedNode != NULL)
-            {
-                if (numberOfOutputs == 0)
-                {
-                    printf("%.2f", searchedNode->value.ballance);
-                    numberOfOutputs++;
-                }else{
-                    printf("\n%.2f", searchedNode->value.ballance);
-                }
-            }else{
-                if (numberOfOutputs == 0)
-                {
-                    printf("search failed");
-                    numberOfOutputs++;
-                }else{
-                    printf("\nsearch failed");
-                }
+        printf("%d: ", i); // Vypíše index hash tabulky
+        Client *current = hashTable[i];
+        if (current == NULL) {
+            printf("NULL"); // Pokud na indexu není žádný klient
+        } else {
+            // Prochází seznam klientů a vypisuje jejich informace
+            while (current != NULL) {
+                printf("Clovek (Jmeno: %s, Prijmeni: %s, Datum narozeni: %s, Zůstatek: %.2f) -> ",
+                       current->firstname, current->lastname, current->dateOfBirth, current->balance);
+                current = current->next;
             }
-            
-            break;
-        case 'u':
-            // update
-            break;
-        case 'd':
-            // delete
-            break;
-        default:
-            break;
+            printf("NULL"); // Na konci seznamu
+        }
+        printf("\n"); // Nový řádek po každém indexu
+    }
+}
+
+
+// Vložení klienta do hash tabulky
+void insertClient(Client *hashTable[], char* firstname, char* lastname, char* dateOfBirth, double balance) {
+    int index = hashFunction(firstname, lastname, dateOfBirth);
+    Client *newClient = (Client *)malloc(sizeof(Client));
+    if (!newClient) {
+        perror("Failed to alloc. memory for new client");
+        return;
+    }
+
+    myStrCopy(newClient->firstname, firstname, FIRSTNAME_SIZE - 1);
+    newClient->firstname[FIRSTNAME_SIZE - 1] = '\0';
+    myStrCopy(newClient->lastname, lastname, LASTNAME_SIZE - 1);
+    newClient->lastname[LASTNAME_SIZE - 1] = '\0';
+    myStrCopy(newClient->dateOfBirth, dateOfBirth, DATE_OF_BIRTH - 1);
+    newClient->dateOfBirth[DATE_OF_BIRTH - 1] = '\0';
+    newClient->balance = balance;
+    newClient->next = hashTable[index]; // Vloží na začátek seznamu
+    hashTable[index] = newClient;
+}
+
+// Vyhledání klienta
+Client* searchClient(Client *hashTable[], char* firstname, char* lastname, char* dateOfBirth) {
+    int index = hashFunction(firstname, lastname, dateOfBirth);
+    for (Client *curr = hashTable[index]; curr != NULL; curr = curr->next) {
+        if (customStringCompare(curr->firstname, firstname) == 0 &&
+            customStringCompare(curr->lastname, lastname) == 0 &&
+            customStringCompare(curr->dateOfBirth, dateOfBirth) == 0) {
+            return curr; // Klient nalezen
+        }
+    }
+    return NULL; // Klient nenalezen
+}
+
+// Aktualizace zůstatku klienta
+void updateBalance(Client *hashTable[], char* firstname, char* lastname, char* dateOfBirth, double newBalance) {
+    Client *client = searchClient(hashTable, firstname, lastname, dateOfBirth);
+    if (client) {
+        client->balance = newBalance; // Aktualizuje zůstatek
+    } else {
+        printf("Client not found.\n");
+    }
+}
+
+// Odstranění klienta
+void deleteClient(Client *hashTable[], char* firstname, char* lastname, char* dateOfBirth) {
+    int index = hashFunction(firstname, lastname, dateOfBirth);
+    Client *curr = hashTable[index], *prev = NULL;
+    while (curr != NULL) {
+        if (customStringCompare(curr->firstname, firstname) == 0 &&
+            customStringCompare(curr->lastname, lastname) == 0 &&
+            customStringCompare(curr->dateOfBirth, dateOfBirth) == 0) {
+            if (prev) {
+                prev->next = curr->next; // Odstraní uzel ze seznamu
+            } else {
+                hashTable[index] = curr->next; // Odstraní první uzel seznamu
+            }
+            free(curr); // Uvolní paměť klienta
+            return;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+    printf("Client not found.\n");
+}
+
+
+int main(void) {
+    char line[LINE_LEN];
+    char opCode;
+    Client *hashTable[HASH_TABLE_SIZE] = {NULL};
+    char firstname[FIRSTNAME_SIZE], lastname[LASTNAME_SIZE], dateOfBirth[DATE_OF_BIRTH], balanceValidation[20];
+    double balance;
+
+    while (fgets(line, sizeof(line), stdin)) {
+        if (sscanf(line, "%c", &opCode) < 1) continue; // Přeskočit prázdné řádky
+
+        if (opCode == 'q') {
+            break; // Ukončit smyčku
+        }
+
+        switch (opCode) {
+            case 'i':
+                if (sscanf(line + 2, "%s %s %s %s", firstname, lastname, dateOfBirth, balanceValidation) == 4) {
+                    balance = customAtolf(balanceValidation);
+                    insertClient(hashTable, firstname, lastname, dateOfBirth, balance);
+                    printf("Client inserted.\n");
+                }
+                break;
+            case 's':
+                if (sscanf(line + 2, "%s %s %s", firstname, lastname, dateOfBirth) == 3) {
+                    Client *found = searchClient(hashTable, firstname, lastname, dateOfBirth);
+                    if (found) {
+                        printf("%.2f\n", found->firstname, found->lastname, found->dateOfBirth, found->balance);
+                    } else {
+                        printf("Client not found.\n");
+                    }
+                }
+                break;
+            case 'u':
+                if (sscanf(line + 2, "%s %s %s %s", firstname, lastname, dateOfBirth, balanceValidation) == 4) {
+                    balance = customAtolf(balanceValidation);
+                    updateBalance(hashTable, firstname, lastname, dateOfBirth, balance);
+                    printf("Client updated.\n");
+                }
+                break;
+            case 'd':
+                if (sscanf(line + 2, "%s %s %s", firstname, lastname, dateOfBirth) == 3) {
+                    deleteClient(hashTable, firstname, lastname, dateOfBirth);
+                    printf("Client deleted.\n");
+                }
+                break;
+            default:
+                //printf("Unknown command.\n");
+                break;
         }
     }
 
-    freeTable(hashTable);
+    
+    
+    //printf("Exiting...\n");
 
     return 0;
 }
