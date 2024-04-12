@@ -75,6 +75,18 @@ void displayGraph(Graph *graph){
     }
 }
 
+void freeGraph(Graph *graph) {
+    for (int i = 0; i < graph->numberOfVertices; i++) {
+        free(graph->lists[i].edges);
+    }
+    free(graph->lists);
+    free(graph);
+}
+
+int* searchPath(int sourceVertex, int destinationVertex, Graph *graph){
+    
+}
+
 int main(void){
     int numberOfVertices;
     int numberOfEdges;
