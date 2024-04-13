@@ -82,6 +82,28 @@ Graph *initialiseGraph(int numberOfVertices, int numberOfEdges){
     return graph;
 }
 
+Graph *insertToGraph(Graph **graph, int sourceVertex, int destinationVertex, int weight){
+    int err = 0;
+    if (sourceVertex > (*graph)->numberOfVertices || destinationVertex > (*graph)->numberOfVertices){
+        err = 1;
+    }else{
+        addEdge(graph, sourceVertex, destinationVertex, weight);
+    }
+
+    if (err)
+    {
+        if (firstOutput)
+        {
+            printf("Insertion failed");
+            firstOutput = 0;
+        }else{
+            printf("\nInsertion failed");
+        }
+    }
+    return *graph;
+    
+}
+
 void displayGraph(Graph *graph){
     for (int i = 0; i < graph->numberOfVertices; i++)
     {
@@ -249,19 +271,19 @@ void *searchPath(int sourceVertex, int destinationVertex, Graph *graph) {
 
 
 int main(void){
-    int numberOfVertices;
-    int numberOfEdges;
+    int temp1;
+    int temp2;
     Graph *graph;
     char line[50];
     fgets(line, sizeof(line), stdin);
-    sscanf(line, "%d %d", &numberOfVertices, &numberOfEdges);
-    graph = initialiseGraph(numberOfVertices, numberOfEdges);
+    sscanf(line, "%d %d", &temp1, &temp2);
+    graph = initialiseGraph(temp1, temp2);
     if (graph == NULL)
     {
         printf("Initialization failed");
-    }else{
+    }/*else{
         displayGraph(graph);
-    }
+    }*/
 
     while(fgets(line, sizeof(line), stdin) != NULL){
         char opCode;
@@ -269,9 +291,9 @@ int main(void){
         switch (opCode)
         {
         case 's':
-            if (sscanf(line+2, "%d %d", &numberOfVertices, &numberOfEdges) == 2)
+            if (sscanf(line+2, "%d %d", &temp1, &temp2) == 2)
             {
-                searchPath(numberOfVertices, numberOfEdges, graph);
+                searchPath(temp1, temp2, graph);
             }else{
                 if (firstOutput)
                 {
@@ -283,6 +305,24 @@ int main(void){
             }
             break;
         
+        case 'i':
+            int weight;
+            if (sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)
+            {
+                graph = insertToGraph(&graph, temp1, temp2, weight);
+            }else{
+                if (firstOutput)
+                {
+                    printf("Search failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\nSearch failed");
+                }
+            }
+            break;
+
+        
+
         default:
             break;
         }
