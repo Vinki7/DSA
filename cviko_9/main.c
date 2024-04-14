@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define INT_MAX 2147483647
+
 // Define global variables
 int firstOutput = 1;
 
@@ -36,73 +38,74 @@ typedef struct heap{
     MinHeapNode *elements;  // Array of heap nodes
 } MinHeap;
 
-
-void addEdge(Graph **graph, int sourceVertex, int destinationVertex, int weight){
-    // add edge from sourceVertex to destinationVertex with weight
-    (*graph)->lists[sourceVertex].capacity++;
-    (*graph)->lists[sourceVertex].edges = (Edge *)realloc((*graph)->lists[sourceVertex].edges, (*graph)->lists[sourceVertex].capacity * sizeof(Edge));
-    (*graph)->lists[sourceVertex].edges[(*graph)->lists[sourceVertex].numberOfEdges].destinationVertex = destinationVertex;
-    (*graph)->lists[sourceVertex].edges[(*graph)->lists[sourceVertex].numberOfEdges].weight = weight;
-    (*graph)->lists[sourceVertex].numberOfEdges++;
-    // add edge from destinationVertex to sourceVertex with weight
-    (*graph)->lists[destinationVertex].capacity++;
-    (*graph)->lists[destinationVertex].edges = (Edge *)realloc((*graph)->lists[destinationVertex].edges, (*graph)->lists[destinationVertex].capacity * sizeof(Edge));
-    (*graph)->lists[destinationVertex].edges[(*graph)->lists[destinationVertex].numberOfEdges].destinationVertex = sourceVertex;
-    (*graph)->lists[destinationVertex].edges[(*graph)->lists[destinationVertex].numberOfEdges].weight = weight;
-    (*graph)->lists[destinationVertex].numberOfEdges++;
-}
-
-Graph *initialiseGraph(int numberOfVertices, int numberOfEdges){
+// Initialize the graph, arguments: number of vertices which should represent the graph
+Graph *initialiseGraph(int numberOfVertices){
+    // Alloc. mem. for graph
     Graph *graph = (Graph *)malloc(sizeof(Graph));
-    graph->numberOfVertices = numberOfVertices;
-    graph->lists = (AdjList *)malloc(numberOfVertices * sizeof(AdjList));
+    if (graph == NULL)// memory alloc. failure
+    {
+        return NULL;
+    }
 
-    // initialize all adjacency lists as empty
+    // Initialise graph
+    graph->numberOfVertices = numberOfVertices;
+    graph->lists = calloc(numberOfVertices, sizeof(AdjList));
+    if (graph->lists == NULL)// memory alloc. failure
+    {
+        free(graph);
+        return NULL;
+    }
+
+    // Initialise adjacency lists
     for (int i = 0; i < numberOfVertices; i++){
         graph->lists[i].edges = NULL;
         graph->lists[i].numberOfEdges = 0;
         graph->lists[i].capacity = 0;
     }
 
-    for (int i = 0; i < numberOfEdges; i++)
-    {
-        int sourceVertex;
-        int destinationVertex;
-        int weight;
-        char line[100];
-        fgets(line, sizeof(line), stdin);
-        if (sscanf(line, " (%d, %d, %d)", &sourceVertex, &destinationVertex, &weight) == 3)
-        {
-            addEdge(&graph, sourceVertex, destinationVertex, weight);
-        }else{
-            return NULL;
-        }
-    }
-
     return graph;
 }
 
-Graph *insertToGraph(Graph **graph, int sourceVertex, int destinationVertex, int weight){
-    int err = 0;
-    if (sourceVertex > (*graph)->numberOfVertices || destinationVertex > (*graph)->numberOfVertices){
-        err = 1;
-    }else{
-        addEdge(graph, sourceVertex, destinationVertex, weight);
+// Function to insert an edge to the graph - add an edge to the adjacency list of the source vertex
+int insertEdge(Graph *graph, int sourceVertex, int destinationVertex, int weight){
+    if (sourceVertex >= graph->numberOfVertices || destinationVertex >= graph->numberOfVertices){
+        return 0;// invalid vertices, 0 - false
     }
 
-    if (err)
-    {
-        if (firstOutput)
-        {
-            printf("Insertion failed");
-            firstOutput = 0;
-        }else{
-            printf("\nInsertion failed");
+    AdjList *list = &graph->lists[sourceVertex];// get the adjacency list of the source vertex
+
+    if (list->numberOfEdges >= list->capacity){
+        int newCapacity = (list->capacity == 0)? 4: list->capacity * 2;
+        Edge *newEdges = (Edge *)realloc(list->edges, newCapacity * sizeof(Edge));
+        if (newEdges == NULL){
+            return 0;
         }
+
+        list->edges = newEdges;
+        list->capacity = newCapacity;
     }
-    return *graph;
+
+    list->edges[list->numberOfEdges++] = (Edge){destinationVertex, weight};// add edge to the source vertex
     
+    list = &graph->lists[destinationVertex];// get the adjacency list of the destination vertex
+
+    if (list->numberOfEdges >= list->capacity){
+        int newCapacity = (list->capacity == 0)? 4: list->capacity * 2;
+        Edge *newEdges = (Edge *)realloc(list->edges, newCapacity * sizeof(Edge));
+        if (newEdges == NULL){
+            return 0;
+        }
+
+        list->edges = newEdges;
+        list->capacity = newCapacity;
+    }
+
+    list->edges[list->numberOfEdges++] = (Edge){sourceVertex, weight};// add edge to the destination vertex
+
+    return 1;// success, 1 - true
 }
+
+
 
 void displayGraph(Graph *graph){
     for (int i = 0; i < graph->numberOfVertices; i++)
@@ -221,7 +224,7 @@ void *searchPath(int sourceVertex, int destinationVertex, Graph *graph) {
             int v = graph->lists[u].edges[i].destinationVertex;
             int weight = graph->lists[u].edges[i].weight;
 
-            if (distances[u] != INT_MAX && distances[v] > distances[u] + weight) {
+            if (distances[u] != INT_MAX && distances[v] > distances[u] + weight) {// here is segmentation fault
                 distances[v] = distances[u] + weight;
                 predecessors[v] = u;
                 decreaseKey(minHeap, v, distances[v]);
@@ -269,6 +272,76 @@ void *searchPath(int sourceVertex, int destinationVertex, Graph *graph) {
     free(path);
 }
 
+Graph *update(Graph **graph, int sourceVertex, int destinationVertex, int weight){
+    int err = 0;
+    if (sourceVertex > (*graph)->numberOfVertices || destinationVertex > (*graph)->numberOfVertices){
+        if (firstOutput)
+        {
+            printf("Update %d %d failed", sourceVertex, destinationVertex);
+            firstOutput = 0;
+        }else{
+            printf("\nUpdate %d %d failed", sourceVertex, destinationVertex);
+        }
+        return *graph;
+    }
+
+    AdjList *sourceList = &(*graph)->lists[sourceVertex];
+    AdjList *destinationList = &(*graph)->lists[destinationVertex];
+
+    for(int i = 0; i < sourceList->numberOfEdges; i++){// delete the edge from the source vertex
+        if (sourceList->edges[i].destinationVertex == destinationVertex){
+            sourceList->edges[i].weight = weight;
+        }
+    }
+
+    for(int i = 0; i < destinationList->numberOfEdges; i++){// delete the edge from the destination vertex
+        if (destinationList->edges[i].destinationVertex == sourceVertex){
+            destinationList->edges[i].weight = weight;
+        }
+    }
+
+    return *graph;
+}
+
+Graph* deleteEdge(Graph **graph, int sourceVertex, int destinationVertex){
+    int err = 0;
+    if (sourceVertex > (*graph)->numberOfVertices || destinationVertex > (*graph)->numberOfVertices){
+        if (firstOutput)
+        {
+            printf("Deletion failed");
+            firstOutput = 0;
+        }else{
+            printf("\nDeletion failed");
+        }
+        return *graph;
+    }else{
+        AdjList *sourceList = &(*graph)->lists[sourceVertex];
+        AdjList *destinationList = &(*graph)->lists[destinationVertex];
+
+        for(int i = 0; i < sourceList->numberOfEdges; i++){// delete the edge from the source vertex
+            if (sourceList->edges[i].destinationVertex == destinationVertex){
+                sourceList->numberOfEdges--;
+                for (int j = i; j < (sourceList->numberOfEdges); j++)
+                {
+                    sourceList->edges[j] = sourceList->edges[j + 1];
+                }
+                break;
+            }
+        }
+
+        for(int i = 0; i < destinationList->numberOfEdges; i++){// delete the edge from the destination vertex
+            if (destinationList->edges[i].destinationVertex == sourceVertex){
+                destinationList->numberOfEdges--;
+                for (int j = i; j < (destinationList->numberOfEdges); j++)
+                {
+                    destinationList->edges[j] = destinationList->edges[j + 1];
+                }
+                break;
+            }
+        }
+        return *graph;
+    }
+}
 
 int main(void){
     int temp1;
@@ -277,17 +350,39 @@ int main(void){
     char line[50];
     fgets(line, sizeof(line), stdin);
     sscanf(line, "%d %d", &temp1, &temp2);
-    graph = initialiseGraph(temp1, temp2);
+    graph = initialiseGraph(temp1);
     if (graph == NULL)
     {
         printf("Initialization failed");
-    }/*else{
-        displayGraph(graph);
-    }*/
+    }
+    for (int i = 0; i < temp2; i++)
+    {
+        int source, destination, weight;
+        fgets(line, sizeof(line), stdin);
+        sscanf(line, "(%d, %d, %d)", &source, &destination, &weight);
+        if (!insertEdge(graph, source, destination, weight))
+        {
+            if (firstOutput)
+            {
+                printf("Initialisation failed");
+                firstOutput = 0;
+            }else{
+                printf("\nInitialisation failed");
+            }
+            
+            break;
+        }
+        
+    }
+    //displayGraph(graph);
+    
+
 
     while(fgets(line, sizeof(line), stdin) != NULL){
         char opCode;
         sscanf(line, "%c", &opCode);
+        int success = 1;
+
         switch (opCode)
         {
         case 's':
@@ -309,19 +404,53 @@ int main(void){
             int weight;
             if (sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)
             {
-                graph = insertToGraph(&graph, temp1, temp2, weight);
+                success = insertEdge(graph, temp1, temp2, weight);
+
+            }else{
+                success = 0;
+            }
+            if (!success)
+            {
+                if (firstOutput)
+                {
+                    printf("Insertion failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\nInsertion failed");
+                }
+            }
+            //displayGraph(graph);
+            break;
+
+        case 'u':
+            if (sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)
+            {
+                graph = update(&graph, temp1, temp2, weight);
             }else{
                 if (firstOutput)
                 {
-                    printf("Search failed");
+                    printf("Update failed");
                     firstOutput = 0;
                 }else{
-                    printf("\nSearch failed");
+                    printf("\nUpdate failed");
                 }
             }
             break;
 
-        
+        case 'd':
+            if(sscanf(line+2, "%d %d", &temp1, &temp2) == 2)
+            {
+                graph = deleteEdge(&graph, temp1, temp2);
+            }else{
+                if (firstOutput)
+                {
+                    printf("Deletion failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\nDeletion failed");
+                }
+            }
+            break;
 
         default:
             break;
