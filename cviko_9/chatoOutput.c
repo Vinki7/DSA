@@ -136,7 +136,7 @@ Edge *findEdge(Graph *graph, int sourceVertex, int destinationVertex){
     return NULL;// Edge not found
 }
 
-void deleteEdge(Vertex *vertex, int numberOfVertices, int destinationVertex){
+int deleteEdge(Vertex *vertex, int numberOfVertices, int destinationVertex){
     int index = hashFunction(destinationVertex, numberOfVertices);
     Edge *currentEdge = vertex->edges[index];
     Edge *previousEdge = NULL;
@@ -148,11 +148,12 @@ void deleteEdge(Vertex *vertex, int numberOfVertices, int destinationVertex){
                 previousEdge->next = currentEdge->next;
             }
             free(currentEdge);
-            return;
+            return 1;
         }
         previousEdge = currentEdge;
         currentEdge = currentEdge->next;
     }
+    return 0;
 }
 
 Graph *initialiseGraph(int numberOfVertices){
@@ -268,6 +269,20 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
             path[i] = crawl;
             crawl = previousVertices[crawl];
         }
+    }else{// if the destination vertex is not reachable
+        if (firstOutput)
+        {
+            printf("Search %d %d failed", sourceVertex, destinationVertex);
+            firstOutput = 0;
+        }else{
+            printf("\nSearch %d %d failed", sourceVertex, destinationVertex);
+        }
+        free(distances);
+        free(previousVertices);
+        free(minHeap->elements);
+        free(minHeap);
+        free(path);
+        return;
     }
 
     free(distances);
@@ -351,6 +366,91 @@ int main(void){
         
     }
     displayGraph(graph);
+
+    while(fgets(line, sizeof(line), stdin) != NULL){
+        char opCode;
+        sscanf(line, "%c", &opCode);
+        int success = 1;
+
+        switch (opCode)
+        {
+        case 's':
+            if (sscanf(line+2, "%d %d", &temp1, &temp2) == 2)
+            {
+                searchPath(temp1, temp2, graph);
+            }else{
+                if (firstOutput)
+                {
+                    printf("Search %d %d failed", temp1, temp2);
+                    firstOutput = 0;
+                }else{
+                    printf("\nSearch %d %d failed", temp1, temp2);
+                }
+            }
+            break;
+        
+        case 'i':
+            int weight;
+            if ((sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)&&(temp1 >= 0 && temp1 < graph->numberOfVertices)&&(temp2 >= 0 && temp2 < graph->numberOfVertices))
+            {
+                addEdge(graph, temp1, temp2, weight);
+
+            }else{
+                if (firstOutput)
+                {
+                    printf("Insert %d %d failed", temp1, temp2);
+                    firstOutput = 0;
+                }else{
+                    printf("\nInsert %d %d failed", temp1, temp2);
+                }
+            }
+            
+            break;
+
+        /*case 'u':
+            if (sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)
+            {
+                graph = update(&graph, temp1, temp2, weight);
+            }else{
+                if (firstOutput)
+                {
+                    printf("Update failed");
+                    firstOutput = 0;
+                }else{
+                    printf("\nUpdate failed");
+                }
+            }
+            break;*/
+
+        case 'd':
+            int success = 1;
+            if((sscanf(line+2, "%d %d", &temp1, &temp2) == 2)&&(temp1 >= 0 && temp1 < graph->numberOfVertices)&&(temp2 >= 0 && temp2 < graph->numberOfVertices))
+            {
+                if (!(deleteEdge(&graph->vertices[temp1], graph->numberOfVertices, temp2) && deleteEdge(&graph->vertices[temp2], graph->numberOfVertices, temp1))){
+                    if (firstOutput)
+                    {
+                        printf("Delete %d %d failed", temp1, temp2);
+                        firstOutput = 0;
+                    }else{
+                        printf("\nDelete %d %d failed", temp1, temp2);
+                    }
+                }
+                
+            }else{
+                if (firstOutput)
+                {
+                    printf("Delete %d %d failed", temp1, temp2);
+                    firstOutput = 0;
+                }else{
+                    printf("\nDelete %d %d failed", temp1, temp2);
+                }
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
 
     return 0;
 }
