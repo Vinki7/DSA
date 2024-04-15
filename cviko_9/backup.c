@@ -128,7 +128,7 @@ void addEdge(Graph *graph, int sourceVertex, int destinationVertex, int weight){
 
 Edge *findEdge(Graph *graph, int sourceVertex, int destinationVertex){
     
-    int index = hashFunction(destinationVertex, graph->numberOfVertices);
+    int index = hashFunction(sourceVertex, graph->numberOfVertices);
     Edge *currentEdge = graph->vertices[sourceVertex].edges[index];
     
     while (currentEdge != NULL){
@@ -267,28 +267,37 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
         MinHeapNode minHeapNode = extractMin(minHeap);
         int u = minHeapNode.vertex;// Vertex with the minimum distance from the extracted vertex
 
-        // Traverse all buckets in the adjacency list for vertex u
-        for (int i = 0; i < numberOfVertices; i++){
-            Edge *currentEdge = graph->vertices[u].edges[i];
-            while (currentEdge != NULL){
-                int v = currentEdge->destinationVertex;
+        // Traverse all adjacent vertices of the extracted vertex (u)
+        int index = hashFunction(u, numberOfVertices);// Hash table for efficiency
+        Edge *currentEdge = graph->vertices[u].edges[index];
+        while (currentEdge != NULL){
+            int v = currentEdge->destinationVertex;
 
-                if (distances[u] != INT_MAX && distances[v] > distances[u] + currentEdge->weight){
-                    distances[v] = distances[u] + currentEdge->weight;
-                    previousVertices[v] = u;
-                    decreaseKey(minHeap, v, distances[v]);
-                }
-                currentEdge = currentEdge->next;
+            // Relaxation
+            // If the vertex is still in the heap and the distance is greater than the weight of the edge
+            if (findEdge(graph, u, v) != NULL && distances[u] != INT_MAX && currentEdge->weight + distances[u] < distances[v]){
+                distances[v] = distances[u] + currentEdge->weight;// Update the distance
+                previousVertices[v] = u;// Update the previous vertex
+                decreaseKey(minHeap, v, distances[v]);// Decrease the key of the vertex
             }
+
+            currentEdge = currentEdge->next;
+
         }
     }
-    int count = 0;
+
+    int count = 0;// Count of vertices in the path
+    int pathLength = 0;// Length of the path
     // Extract path from source to destination
     if (distances[destinationVertex] != INT_MAX) {// if the destination vertex is reachable
-        int crawl = destinationVertex;
+        int crawl = destinationVertex; // destination vertex
         while (crawl != -1) {
             count++;
-            crawl = previousVertices[crawl];
+            int prev = previousVertices[crawl];
+            if (prev != -1) {
+                pathLength += findEdge(graph, prev, crawl)->weight;
+            }
+            crawl = prev;
         }
         path = (int *)malloc(count * sizeof(int));
         crawl = destinationVertex;
@@ -299,10 +308,10 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
     }else{// if the destination vertex is not reachable
         if (firstOutput)
         {
-            printf("search %d %d failed", sourceVertex, destinationVertex);
+            printf("Search %d %d failed", sourceVertex, destinationVertex);
             firstOutput = 0;
         }else{
-            printf("\nsearch %d %d failed", sourceVertex, destinationVertex);
+            printf("\nSearch %d %d failed", sourceVertex, destinationVertex);
         }
         free(distances);
         free(previousVertices);
@@ -311,25 +320,28 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
         free(path);
         return;
     }
-    for (int i = 0; i < count; i++)
-    {
-        if (firstOutput)
-        {
-            printf("%d: [%d", distances[destinationVertex], path[i]);
-            firstOutput = 0;
-        }else if (!i)
-        {
-            printf("\n%d: [%d", distances[destinationVertex], path[i]);
-        }else{
-            printf(", %d", path[i]);
-        }   
-    }
-    printf("]");
-    
+
     free(distances);
     free(previousVertices);
     free(minHeap->elements);
     free(minHeap);
+
+    for (int i = 0; i < count; i++)
+    {
+        if (firstOutput)
+        {
+            printf("%d: [%d", pathLength, path[i]);
+            firstOutput = 0;
+        }else if (!i)
+        {
+            printf("\n%d: [%d", pathLength, path[i]);
+        }else if (i == count - 1)
+        {
+            printf(", %d]", path[i]);
+        }else{
+            printf(", %d", path[i]);
+        }   
+    }
     free(path);
 }
 
@@ -366,7 +378,7 @@ int main(void){
     graph = initialiseGraph(temp1);
     if (graph == NULL)
     {
-        printf("initialization failed");
+        printf("Initialization failed");
     }
     for (int i = 0; i < temp2; i++)
     {
@@ -377,10 +389,10 @@ int main(void){
         {
             if (firstOutput)
             {
-                printf("initialisation failed");
+                printf("Initialisation failed");
                 firstOutput = 0;
             }else{
-                printf("\ninitialisation failed");
+                printf("\nInitialisation failed");
             }
             
             break;
@@ -389,6 +401,7 @@ int main(void){
         }
         
     }
+    displayGraph(graph);
 
     while(fgets(line, sizeof(line), stdin) != NULL){
         char opCode;
@@ -404,10 +417,10 @@ int main(void){
             }else{
                 if (firstOutput)
                 {
-                    printf("search %d %d failed", temp1, temp2);
+                    printf("Search %d %d failed", temp1, temp2);
                     firstOutput = 0;
                 }else{
-                    printf("\nsearch %d %d failed", temp1, temp2);
+                    printf("\nSearch %d %d failed", temp1, temp2);
                 }
             }
             break;
@@ -421,12 +434,13 @@ int main(void){
             }else{
                 if (firstOutput)
                 {
-                    printf("insert %d %d failed", temp1, temp2);
+                    printf("Insert %d %d failed", temp1, temp2);
                     firstOutput = 0;
                 }else{
-                    printf("\ninsert %d %d failed", temp1, temp2);
+                    printf("\nInsert %d %d failed", temp1, temp2);
                 }
             }
+            displayGraph(graph);
             break;
 
         case 'u':
@@ -436,19 +450,19 @@ int main(void){
                 {
                     if (firstOutput)
                     {
-                        printf("update %d %d failed", temp1, temp2);
+                        printf("Update %d %d failed", temp1, temp2);
                         firstOutput = 0;
                     }else{
-                        printf("\nupdate %d %d failed", temp1, temp2);
+                        printf("\nUpdate %d %d failed", temp1, temp2);
                     }
                 }
             }else{
                 if (firstOutput)
                 {
-                    printf("update %d %d failed", temp1, temp2);
+                    printf("Update %d %d failed", temp1, temp2);
                     firstOutput = 0;
                 }else{
-                    printf("\nupdate %d %d failed", temp1, temp2);
+                    printf("\nUpdate %d %d failed", temp1, temp2);
                 }
             }
             break;
@@ -460,22 +474,23 @@ int main(void){
                 if (!(deleteEdge(&graph->vertices[temp1], graph->numberOfVertices, temp2) && deleteEdge(&graph->vertices[temp2], graph->numberOfVertices, temp1))){
                     if (firstOutput)
                     {
-                        printf("delete %d %d failed", temp1, temp2);
+                        printf("Delete %d %d failed", temp1, temp2);
                         firstOutput = 0;
                     }else{
-                        printf("\ndelete %d %d failed", temp1, temp2);
+                        printf("\nDelete %d %d failed", temp1, temp2);
                     }
                 }
                 
             }else{
                 if (firstOutput)
                 {
-                    printf("delete %d %d failed", temp1, temp2);
+                    printf("Delete %d %d failed", temp1, temp2);
                     firstOutput = 0;
                 }else{
-                    printf("\ndelete %d %d failed", temp1, temp2);
+                    printf("\nDelete %d %d failed", temp1, temp2);
                 }
             }
+            displayGraph(graph);
             break;
 
         default:
