@@ -33,7 +33,7 @@ typedef struct {
     int heapCapacity;
 } MinHeap;
 
-
+// --------------------------------------------- Min heap functions ---------------------------------------------
 MinHeap *createMinHeap(int heapCapacity){// Create a min heap - alloc. mem. for the heap and the array of elements
     MinHeap *minHeap = (MinHeap *)malloc(sizeof(MinHeap));
     if (minHeap == NULL){
@@ -101,10 +101,14 @@ void decreaseKey(MinHeap *minHeap, int vertex, int distance){
     }
 }
 
+// Hash function for the vertices (adjacency lists represented as hash tables for efficiency)
 int hashFunction(int vertexId, int numberOfVertices){
     return vertexId % numberOfVertices;
 }
 
+// --------------------------------------------- Graph manipulation functions ---------------------------------------------
+
+// Add an edge to the graph
 void addEdge(Graph *graph, int sourceVertex, int destinationVertex, int weight){
     int index = hashFunction(sourceVertex, graph->numberOfVertices);
     Edge *newEdge = (Edge *)malloc(sizeof(Edge));
@@ -113,7 +117,7 @@ void addEdge(Graph *graph, int sourceVertex, int destinationVertex, int weight){
     newEdge->next = graph->vertices[sourceVertex].edges[index];
     graph->vertices[sourceVertex].edges[index] = newEdge;
 
-    // Add the edge in the opposite direction
+    // Add the edge in the opposite way
     index = hashFunction(destinationVertex, graph->numberOfVertices);
     newEdge = (Edge *)malloc(sizeof(Edge));
     newEdge->destinationVertex = sourceVertex;
@@ -136,6 +140,22 @@ Edge *findEdge(Graph *graph, int sourceVertex, int destinationVertex){
     return NULL;// Edge not found
 }
 
+int updateEdge(Graph *graph, int sourceVertex, int destinationVertex, int weight){
+    int numberOfVertices = graph->numberOfVertices;
+    Edge *firstEdgeRep = findEdge(graph, sourceVertex, destinationVertex);
+    Edge *secondEdgeRep = findEdge(graph, destinationVertex, sourceVertex);
+    if ((firstEdgeRep == NULL) || (secondEdgeRep == NULL)){// Edge not found
+        return 0;
+    }
+    if((firstEdgeRep->weight + weight)<0 || (secondEdgeRep->weight + weight) < 0){
+        return 0;
+    }
+    firstEdgeRep->weight += weight;
+    secondEdgeRep->weight += weight;
+    return 1;
+}
+
+// Delete an edge from the graph
 int deleteEdge(Vertex *vertex, int numberOfVertices, int destinationVertex){
     int index = hashFunction(destinationVertex, numberOfVertices);
     Edge *currentEdge = vertex->edges[index];
@@ -172,8 +192,8 @@ Graph *initialiseGraph(int numberOfVertices){
         graph->vertices[i].edges = (Edge **)malloc(numberOfVertices * sizeof(Edge *));
         // Handle memory alloc. failure
         if (graph->vertices[i].edges == NULL) {
-            // Handle memory allocation failure:
-            // Free previously allocated memory before returning NULL
+            // Handle memory alloc. failure:
+            // Free previously alloc. memory before returning NULL
             for (int j = 0; j < i; j++) {
                 free(graph->vertices[j].edges);
             }
@@ -191,23 +211,34 @@ Graph *initialiseGraph(int numberOfVertices){
     return graph;
 }
 
-void freeGraph(Graph *graph){
-    for (int i = 0; i < graph->numberOfVertices; i++)
-    {
-        for (int j = 0; j < graph->numberOfVertices; i++)
-        {
-            Edge *currentEdge = graph->vertices[i].edges[j];
-            while (currentEdge != NULL)
-            {
-                Edge *tempEdge = currentEdge;
-                currentEdge = currentEdge->next;
-                free(tempEdge);
-            }
-        }
-        free(graph->vertices[i].edges);        
+void freeGraph(Graph *graph) {
+    if (graph == NULL) {
+        return; // Prevent NULL pointer dereference - segfault
     }
-    free(graph->vertices);// Free the memory alloc. for the vertices
-    free(graph);// Free the memory alloc. for the graph
+
+    // Loop through each vertex
+    for (int i = 0; i < graph->numberOfVertices; i++) {
+        // Check if the vertex has alloc. edge lists
+        if (graph->vertices[i].edges != NULL) {
+            // Loop through each bucket in the hash table of edges
+            for (int j = 0; j < graph->numberOfVertices; j++) { // Assuming the hash table size is numberOfVertices
+                Edge *currentEdge = graph->vertices[i].edges[j];
+                // Free all edges in the linked list at this bucket
+                while (currentEdge != NULL) {
+                    Edge *tempEdge = currentEdge;
+                    currentEdge = currentEdge->next;
+                    free(tempEdge);
+                }
+            }
+            // Free the array of edge pointers for this vertex
+            free(graph->vertices[i].edges);
+        }
+    }
+
+    // Free the array of vertices
+    free(graph->vertices);
+    // Finally, free the graph structure itself
+    free(graph);
 }
 
 
@@ -226,7 +257,7 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
         minHeap->sizeOfHeap++;
     }
 
-    // Heapify the MinHeap - direction: bottom-up
+    // Heapify the MinHeap - bottom-up
     for (int i = (minHeap->sizeOfHeap -2) / 2; i >= 0; i--){// Start from the last non-leaf node
         minHeapify(minHeap, i);
     }
@@ -256,12 +287,17 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
     }
 
     int count = 0;// Count of vertices in the path
+    int pathLength = 0;// Length of the path
     // Extract path from source to destination
     if (distances[destinationVertex] != INT_MAX) {// if the destination vertex is reachable
         int crawl = destinationVertex; // destination vertex
         while (crawl != -1) {
             count++;
-            crawl = previousVertices[crawl];
+            int prev = previousVertices[crawl];
+            if (prev != -1) {
+                pathLength += findEdge(graph, prev, crawl)->weight;
+            }
+            crawl = prev;
         }
         path = (int *)malloc(count * sizeof(int));
         crawl = destinationVertex;
@@ -294,11 +330,11 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
     {
         if (firstOutput)
         {
-            printf("[%d", path[i]);
+            printf("%d: [%d", pathLength, path[i]);
             firstOutput = 0;
         }else if (!i)
         {
-            printf("\n[%d", path[i]);
+            printf("\n%d: [%d", pathLength, path[i]);
         }else if (i == count - 1)
         {
             printf(", %d]", path[i]);
@@ -365,7 +401,7 @@ int main(void){
         }
         
     }
-    displayGraph(graph);
+    //displayGraph(graph);
 
     while(fgets(line, sizeof(line), stdin) != NULL){
         char opCode;
@@ -407,20 +443,29 @@ int main(void){
             
             break;
 
-        /*case 'u':
-            if (sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)
+        case 'u':
+            if ((sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)&&(temp1 >= 0 && temp1 < graph->numberOfVertices)&&(temp2 >= 0 && temp2 < graph->numberOfVertices))
             {
-                graph = update(&graph, temp1, temp2, weight);
+                if (!updateEdge(graph, temp1, temp2, weight))
+                {
+                    if (firstOutput)
+                    {
+                        printf("Update %d %d failed", temp1, temp2);
+                        firstOutput = 0;
+                    }else{
+                        printf("\nUpdate %d %d failed", temp1, temp2);
+                    }
+                }
             }else{
                 if (firstOutput)
                 {
-                    printf("Update failed");
+                    printf("Update %d %d failed", temp1, temp2);
                     firstOutput = 0;
                 }else{
-                    printf("\nUpdate failed");
+                    printf("\nUpdate %d %d failed", temp1, temp2);
                 }
             }
-            break;*/
+            break;
 
         case 'd':
             int success = 1;
@@ -452,5 +497,6 @@ int main(void){
         }
     }
 
+    freeGraph(graph);
     return 0;
 }
