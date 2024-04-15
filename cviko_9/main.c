@@ -200,7 +200,7 @@ void decreaseKey(MinHeap *minHeap, int vertex, int dist) {
 
 
 // Function to find the shortest path from source vertex to destination vertex - Dijkstra's algorithm
-void *searchPath(int sourceVertex, int destinationVertex, Graph *graph) {
+void searchPath(int sourceVertex, int destinationVertex, Graph *graph) {
     int *distances = (int *)malloc(graph->numberOfVertices * sizeof(int));// array to store the distances from the source vertex
     int *predecessors = (int *)malloc(graph->numberOfVertices * sizeof(int));// array to store the predecessors of the vertices
     int *path = NULL;// array to store the path from source to destination
@@ -216,7 +216,7 @@ void *searchPath(int sourceVertex, int destinationVertex, Graph *graph) {
     distances[sourceVertex] = 0;
     decreaseKey(minHeap, sourceVertex, 0);// Make the distance value of the source vertex as 0 so that it is extracted first
 
-    while (minHeap->size > 0) {
+    while (minHeap->size > 0) {// Extract the vertex with minimum distance value
         MinHeapNode minNode = extractMin(minHeap);
         int u = minNode.vertex;
 
