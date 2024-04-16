@@ -18,7 +18,7 @@ typedef struct vertex {
 
 typedef struct graph {
     int numberOfVertices;
-    Vertex *vertices;  // Array of vertices
+    Vertex *adjList;  // Array of vertices
 } Graph;
 
 
@@ -103,7 +103,8 @@ void decreaseKey(MinHeap *minHeap, int vertex, int distance){
 
 // Hash function for the vertices (adjacency lists represented as hash tables for efficiency)
 int hashFunction(int vertexId, int numberOfVertices){
-    return vertexId % numberOfVertices;
+    //return vertexId % numberOfVertices;
+    return vertexId;
 }
 
 // --------------------------------------------- Graph manipulation functions ---------------------------------------------
@@ -114,22 +115,22 @@ void addEdge(Graph *graph, int sourceVertex, int destinationVertex, int weight){
     Edge *newEdge = (Edge *)malloc(sizeof(Edge));
     newEdge->destinationVertex = destinationVertex;
     newEdge->weight = weight;
-    newEdge->next = graph->vertices[sourceVertex].edges[index];
-    graph->vertices[sourceVertex].edges[index] = newEdge;
+    newEdge->next = graph->adjList[sourceVertex].edges[index];
+    graph->adjList[sourceVertex].edges[index] = newEdge;
 
     // Add the edge in the opposite way
     index = hashFunction(sourceVertex, graph->numberOfVertices);
     newEdge = (Edge *)malloc(sizeof(Edge));
     newEdge->destinationVertex = sourceVertex;
     newEdge->weight = weight;
-    newEdge->next = graph->vertices[destinationVertex].edges[index];
-    graph->vertices[destinationVertex].edges[index] = newEdge;
+    newEdge->next = graph->adjList[destinationVertex].edges[index];
+    graph->adjList[destinationVertex].edges[index] = newEdge;
 }
 
 Edge *findEdge(Graph *graph, int sourceVertex, int destinationVertex){
     
     int index = hashFunction(destinationVertex, graph->numberOfVertices);
-    Edge *currentEdge = graph->vertices[sourceVertex].edges[index];
+    Edge *currentEdge = graph->adjList[sourceVertex].edges[index];
     
     while (currentEdge != NULL){
         if (currentEdge->destinationVertex == destinationVertex){
@@ -185,27 +186,27 @@ Graph *initialiseGraph(int numberOfVertices){
     }
 
     graph->numberOfVertices = numberOfVertices;
-    graph->vertices = (Vertex *)malloc(numberOfVertices * sizeof(Vertex));
+    graph->adjList = (Vertex *)malloc(numberOfVertices * sizeof(Vertex));
 
     // Initialise adjacency lists
     for (int i = 0; i < numberOfVertices; i++){
-        graph->vertices[i].edges = (Edge **)malloc(numberOfVertices * sizeof(Edge *));
+        graph->adjList[i].edges = (Edge **)malloc(numberOfVertices * sizeof(Edge *));
         // Handle memory alloc. failure
-        if (graph->vertices[i].edges == NULL) {
+        if (graph->adjList[i].edges == NULL) {
             // Handle memory alloc. failure:
             // Free previously alloc. memory before returning NULL
             for (int j = 0; j < i; j++) {
-                free(graph->vertices[j].edges);
+                free(graph->adjList[j].edges);
             }
-            free(graph->vertices);
+            free(graph->adjList);
             free(graph);
             return NULL;
         }
         // Init. all edges to NULL
         for (int j = 0; j < numberOfVertices; j++) {
-            graph->vertices[i].edges[j] = NULL;
+            graph->adjList[i].edges[j] = NULL;
         }
-        graph->vertices[i].id = i;
+        graph->adjList[i].id = i;
     }
 
     return graph;
@@ -219,10 +220,10 @@ void freeGraph(Graph *graph) {
     // Loop through each vertex
     for (int i = 0; i < graph->numberOfVertices; i++) {
         // Check if the vertex has alloc. edge lists
-        if (graph->vertices[i].edges != NULL) {
+        if (graph->adjList[i].edges != NULL) {
             // Loop through each bucket in the hash table of edges
             for (int j = 0; j < graph->numberOfVertices; j++) { // Assuming the hash table size is numberOfVertices
-                Edge *currentEdge = graph->vertices[i].edges[j];
+                Edge *currentEdge = graph->adjList[i].edges[j];
                 // Free all edges in the linked list at this bucket
                 while (currentEdge != NULL) {
                     Edge *tempEdge = currentEdge;
@@ -231,12 +232,12 @@ void freeGraph(Graph *graph) {
                 }
             }
             // Free the array of edge pointers for this vertex
-            free(graph->vertices[i].edges);
+            free(graph->adjList[i].edges);
         }
     }
 
     // Free the array of vertices
-    free(graph->vertices);
+    free(graph->adjList);
     // Finally, free the graph structure itself
     free(graph);
 }
@@ -269,7 +270,7 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
 
         // Traverse all buckets in the adjacency list for vertex u
         for (int i = 0; i < numberOfVertices; i++){
-            Edge *currentEdge = graph->vertices[u].edges[i];
+            Edge *currentEdge = graph->adjList[u].edges[i];
             while (currentEdge != NULL){
                 int v = currentEdge->destinationVertex;
 
@@ -341,11 +342,11 @@ void displayGraph(Graph *graph) {
 
     printf("Graph with %d vertices:\n", graph->numberOfVertices);
     for (int i = 0; i < graph->numberOfVertices; i++) {
-        printf("Vertex %d:", graph->vertices[i].id);
+        printf("Vertex %d:", graph->adjList[i].id);
 
         // Iterate over each bucket in the hash table
         for (int j = 0; j < graph->numberOfVertices; j++) {
-            Edge *edge = graph->vertices[i].edges[j];
+            Edge *edge = graph->adjList[i].edges[j];
             while (edge) {
                 printf(" -> %d(weight %d)", edge->destinationVertex, edge->weight);
                 edge = edge->next;
@@ -398,8 +399,7 @@ int main(void){
         switch (opCode)
         {
         case 's':
-            if ((sscanf(line+2, "%d %d", &temp1, &temp2) == 2)&&(temp1 >= 0 && temp1 < graph->numberOfVertices)&&(temp2 >= 0 && temp2 < graph->numberOfVertices)&&(temp1!=temp2))
-            {
+            if ((sscanf(line+2, "%d %d", &temp1, &temp2) == 2)&&(temp1 >= 0 && temp1 < graph->numberOfVertices)&&(temp2 >= 0 && temp2 < graph->numberOfVertices)&&(temp1!=temp2))            {
                 searchPath(temp1, temp2, graph);
             }else{
                 if (firstOutput)
@@ -460,7 +460,7 @@ int main(void){
             int success = 1;
             if((sscanf(line+2, "%d %d", &temp1, &temp2) == 2)&&(temp1 >= 0 && temp1 < graph->numberOfVertices)&&(temp2 >= 0 && temp2 < graph->numberOfVertices)&&(temp1!=temp2))
             {
-                if (!(deleteEdge(&graph->vertices[temp1], graph->numberOfVertices, temp2) && deleteEdge(&graph->vertices[temp2], graph->numberOfVertices, temp1))){
+                if (!(deleteEdge(&graph->adjList[temp1], graph->numberOfVertices, temp2) && deleteEdge(&graph->adjList[temp2], graph->numberOfVertices, temp1))){
                     if (firstOutput)
                     {
                         printf("delete %d %d failed", temp1, temp2);

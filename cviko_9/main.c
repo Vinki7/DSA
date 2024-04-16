@@ -1,461 +1,447 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define INT_MAX 2147483647
+#define INT_MAX 2147483646// Represents infinity
+int firstOutput = 1;// Flag for the first output
 
-// Define global variables
-int firstOutput = 1;
+typedef struct node {
+    int destinationVertex;
+    int weight;
+    struct node* next;
+} Node;
 
-// Define structures for graph representation
-// Define a structure for edge
-typedef struct edge{
-    int destinationVertex; // (v in V)
-    int weight; // w(u, v)
-}Edge;
+typedef struct {
+    int numberOfVertices;
+    Node** adjList;// Adjacency list
+} Graph;
 
-typedef struct adjacencyList{// Adjacency list represents a vertex in the graph
-    Edge *edges;    // array of edges - dynamic array, adjacency list
-    int numberOfEdges;  // number of edges
-    int capacity; // size of the array
-}AdjList;
+typedef struct priorityQueue {
+    int capacity;
+    int size;
+    int *elements;  
+    int *distance;  
+    int *position;  
+} PriorityQueue;
 
-typedef struct graph{
-    AdjList *lists; // array of adjacency lists, one list for each vertex
-    int numberOfVertices; // number of all vertices
-}Graph;
-
-// Let's define a structure for Min-heap
-// Node of Min Heap
-typedef struct heapNode{
-    int vertex;  // Vertex number
-    int dist;    // Distance from source
-} MinHeapNode;
-
-// Structure to represent a min heap
-typedef struct heap{
-    int capacity;   // Maximum capacity of the heap
-    int size;       // Current size of the heap
-    MinHeapNode *elements;  // Array of heap nodes
-} MinHeap;
-
-// Initialize the graph, arguments: number of vertices which should represent the graph
-Graph *initialiseGraph(int numberOfVertices){
-    // Alloc. mem. for graph
-    Graph *graph = (Graph *)malloc(sizeof(Graph));
-    if (graph == NULL)// memory alloc. failure
-    {
-        return NULL;
-    }
-
-    // Initialise graph
-    graph->numberOfVertices = numberOfVertices;
-    graph->lists = calloc(numberOfVertices, sizeof(AdjList));
-    if (graph->lists == NULL)// memory alloc. failure
-    {
-        free(graph);
-        return NULL;
-    }
-
-    // Initialise adjacency lists
-    for (int i = 0; i < numberOfVertices; i++){
-        graph->lists[i].edges = NULL;
-        graph->lists[i].numberOfEdges = 0;
-        graph->lists[i].capacity = 0;
-    }
-
-    return graph;
+int validateVertex(Graph* graph, int vertex) {
+    return vertex >= 0 && vertex < graph->numberOfVertices;
 }
 
-// Function to insert an edge to the graph - add an edge to the adjacency list of the source vertex
-int insertEdge(Graph *graph, int sourceVertex, int destinationVertex, int weight){
-    if (sourceVertex >= graph->numberOfVertices || destinationVertex >= graph->numberOfVertices){
-        return 0;// invalid vertices, 0 - false
+// ---------------------------- Priority Queue ----------------------------
+// Initialize PriorityQueue
+PriorityQueue* createPriorityQueue(int capacity) {
+    PriorityQueue *priorityQ = (PriorityQueue*)malloc(sizeof(PriorityQueue));
+    priorityQ->capacity = capacity;
+    priorityQ->size = 0;
+    priorityQ->elements = (int*)malloc(sizeof(int) * capacity);
+    priorityQ->distance = (int*)malloc(sizeof(int) * capacity);
+    priorityQ->position = (int*)malloc(sizeof(int) * capacity);
+    for (int i = 0; i < capacity; i++) {
+        priorityQ->position[i] = -1;  // Initialize positions as -1
     }
-
-    AdjList *list = &graph->lists[sourceVertex];// get the adjacency list of the source vertex
-
-    if (list->numberOfEdges >= list->capacity){
-        int newCapacity = (list->capacity == 0)? 4: list->capacity * 2;
-        Edge *newEdges = (Edge *)realloc(list->edges, newCapacity * sizeof(Edge));
-        if (newEdges == NULL){
-            return 0;
-        }
-
-        list->edges = newEdges;
-        list->capacity = newCapacity;
-    }
-
-    list->edges[list->numberOfEdges++] = (Edge){destinationVertex, weight};// add edge to the source vertex
-    
-    list = &graph->lists[destinationVertex];// get the adjacency list of the destination vertex
-
-    if (list->numberOfEdges >= list->capacity){
-        int newCapacity = (list->capacity == 0)? 4: list->capacity * 2;
-        Edge *newEdges = (Edge *)realloc(list->edges, newCapacity * sizeof(Edge));
-        if (newEdges == NULL){
-            return 0;
-        }
-
-        list->edges = newEdges;
-        list->capacity = newCapacity;
-    }
-
-    list->edges[list->numberOfEdges++] = (Edge){sourceVertex, weight};// add edge to the destination vertex
-
-    return 1;// success, 1 - true
+    return priorityQ;
 }
 
 
+// Swap two nodes in the heap
+void swapNodes(PriorityQueue *priorityQ, int first, int second) {
+    // Swap elements
+    int temp = priorityQ->elements[first];
+    priorityQ->elements[first] = priorityQ->elements[second];
+    priorityQ->elements[second] = temp;
 
-void displayGraph(Graph *graph){
-    for (int i = 0; i < graph->numberOfVertices; i++)
-    {
-        printf("Vertex %d: ", i);
-        for (int j = 0; j < graph->lists[i].numberOfEdges; j++)
-        {
-            printf("(%d, %d) ", graph->lists[i].edges[j].destinationVertex, graph->lists[i].edges[j].weight);
-        }
-        printf("\n");
-    }
-}
+    // Swap distances
+    temp = priorityQ->distance[first];
+    priorityQ->distance[first] = priorityQ->distance[second];
+    priorityQ->distance[second] = temp;
 
-void freeGraph(Graph *graph) {
-    for (int i = 0; i < graph->numberOfVertices; i++) {
-        free(graph->lists[i].edges);
-    }
-    free(graph->lists);
-    free(graph);
+    // Swap positions
+    priorityQ->position[priorityQ->elements[first]] = first;
+    priorityQ->position[priorityQ->elements[second]] = second;
 }
 
 
-// Function to create a Min Heap
-MinHeap *createMinHeap(int capacity) {
-    MinHeap *minHeap = (MinHeap *)malloc(sizeof(MinHeap));
-    minHeap->capacity = capacity;
-    minHeap->size = 0;
-    minHeap->elements = (MinHeapNode *)malloc(sizeof(MinHeapNode) * capacity);
-    return minHeap;
-}
+// Insert a new element into the heap
+void insertIntoPriorityQueue(PriorityQueue *priorityQ, int vertex, int dist) {
+    if (priorityQ->size == priorityQ->capacity) return;
 
-// Declare min-heap operations
+    // Insert the new element at the end of the heap
+    int i = priorityQ->size;
+    priorityQ->elements[i] = vertex;
+    priorityQ->distance[i] = dist;
+    priorityQ->position[vertex] = i;
+    priorityQ->size++;
 
-// A utility function to swap two nodes of min heap.
-void swapMinHeapNode(MinHeapNode *a, MinHeapNode *b) {
-    MinHeapNode temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-// A standard function to heapify at given idx
-void minHeapify(MinHeap *minHeap, int idx) {
-    // idx is the index of an element in the heap
-    int smallest = idx;// Initialize smallest as root
-    int left = 2 * idx + 1;// left child
-    int right = 2 * idx + 2;// right child
-    // compare the element with its left and right children and find the smallest value
-    if (left < minHeap->size && minHeap->elements[left].dist < minHeap->elements[smallest].dist){
-        smallest = left;
-    }
-
-    if (right < minHeap->size && minHeap->elements[right].dist < minHeap->elements[smallest].dist){
-        smallest = right;
-    }
-
-    if (smallest != idx) {
-        swapMinHeapNode(&minHeap->elements[smallest], &minHeap->elements[idx]); // swap the nodes
-        minHeapify(minHeap, smallest);// recursively heapify the affected sub-tree
-    }
-}
-
-// A utility function to check if the given minHeap is empty or not
-MinHeapNode extractMin(MinHeap *minHeap) {
-    if (minHeap->size <= 0){
-        return (MinHeapNode){-1, 0};// return -1 if the heap is empty and the distance is 0
-    }
-    MinHeapNode root = minHeap->elements[0];
-    minHeap->elements[0] = minHeap->elements[minHeap->size - 1];
-    minHeap->size--;
-    minHeapify(minHeap, 0);// heapify the root - maintaint the heap property
-    return root;
-}
-
-// A utility function to decrease the distance value of a given vertex v
-void decreaseKey(MinHeap *minHeap, int vertex, int dist) {
-    // This function decreases the key (distance) of vertex to dist. It is assumed that dist is smaller than the original key of vertex
-    // Also called as relaxing the vertex
-
-    int i;
-    for (i = 0; i < minHeap->size; i++){
-        if (minHeap->elements[i].vertex == vertex){// Match the vertex
-            break;
-        }
-    }
-
-    minHeap->elements[i].dist = dist;
-    while (i && minHeap->elements[i].dist < minHeap->elements[(i - 1) / 2].dist) {// Heapify-up the node to maintain the heap property
-        swapMinHeapNode(&minHeap->elements[i], &minHeap->elements[(i - 1) / 2]);
+    // Fix the min heap property if it is violated
+    while (i != 0 && priorityQ->distance[(i - 1) / 2] > priorityQ->distance[i]) {
+        swapNodes(priorityQ, i, (i - 1) / 2);
         i = (i - 1) / 2;
     }
 }
 
 
-// Function to find the shortest path from source vertex to destination vertex - Dijkstra's algorithm
-void searchPath(int sourceVertex, int destinationVertex, Graph *graph) {
-    int *distances = (int *)malloc(graph->numberOfVertices * sizeof(int));// array to store the distances from the source vertex
-    int *predecessors = (int *)malloc(graph->numberOfVertices * sizeof(int));// array to store the predecessors of the vertices
-    int *path = NULL;// array to store the path from source to destination
-    MinHeap *minHeap = createMinHeap(graph->numberOfVertices);
+// Heapify the heap - top-down
+void heapify(PriorityQueue *priorityQ, int i) {
+    int smallest = i;
+    int left = 2 * i + 1;
+    int right = 2 * i + 2;
 
-    for (int v = 0; v < graph->numberOfVertices; v++) {
-        distances[v] = INT_MAX;// Initialize distances to all vertices as INFINITE
-        predecessors[v] = -1;// Initialize predecessors for all vertices as -1
-        minHeap->elements[v] = (MinHeapNode){v, distances[v]};
-        minHeap->size++;
+    if (left < priorityQ->size && priorityQ->distance[left] < priorityQ->distance[smallest]) {
+        smallest = left;
+    }
+    if (right < priorityQ->size && priorityQ->distance[right] < priorityQ->distance[smallest]) {
+        smallest = right;
     }
 
-    distances[sourceVertex] = 0;
-    decreaseKey(minHeap, sourceVertex, 0);// Make the distance value of the source vertex as 0 so that it is extracted first
-
-    while (minHeap->size > 0) {// Extract the vertex with minimum distance value
-        MinHeapNode minNode = extractMin(minHeap);
-        int u = minNode.vertex;
-
-        for (int i = 0; i < graph->lists[u].numberOfEdges; i++) {
-            int v = graph->lists[u].edges[i].destinationVertex;
-            int weight = graph->lists[u].edges[i].weight;
-
-            if (distances[u] != INT_MAX && distances[v] > distances[u] + weight) {// here is segmentation fault
-                distances[v] = distances[u] + weight;
-                predecessors[v] = u;
-                decreaseKey(minHeap, v, distances[v]);
-            }
-        }
-    }
-
-    int count = 0;// Count of vertices in the path
-    // Extract path from source to destination
-    if (distances[destinationVertex] != INT_MAX) {// if the destination vertex is reachable
-        int crawl = destinationVertex; // destination vertex
-        while (crawl != -1) {
-            count++;
-            crawl = predecessors[crawl];
-        }
-        path = (int *)malloc(count * sizeof(int));
-        crawl = destinationVertex;
-        for (int i = count - 1; i >= 0; --i) {
-            path[i] = crawl;
-            crawl = predecessors[crawl];
-        }
-    }
-
-    free(distances);
-    free(predecessors);
-    free(minHeap->elements);
-    free(minHeap);
-
-    for (int i = 0; i < count; i++)
-    {
-        if (firstOutput)
-        {
-            printf("[%d", path[i]);
-            firstOutput = 0;
-        }else if (!i)
-        {
-            printf("\n[%d", path[i]);
-        }else if (i == count - 1)
-        {
-            printf(", %d]", path[i]);
-        }else{
-            printf(", %d", path[i]);
-        }   
-    }
-    free(path);
-}
-
-Graph *update(Graph **graph, int sourceVertex, int destinationVertex, int weight){
-    int err = 0;
-    if (sourceVertex > (*graph)->numberOfVertices || destinationVertex > (*graph)->numberOfVertices){
-        if (firstOutput)
-        {
-            printf("Update %d %d failed", sourceVertex, destinationVertex);
-            firstOutput = 0;
-        }else{
-            printf("\nUpdate %d %d failed", sourceVertex, destinationVertex);
-        }
-        return *graph;
-    }
-
-    AdjList *sourceList = &(*graph)->lists[sourceVertex];
-    AdjList *destinationList = &(*graph)->lists[destinationVertex];
-
-    for(int i = 0; i < sourceList->numberOfEdges; i++){// delete the edge from the source vertex
-        if (sourceList->edges[i].destinationVertex == destinationVertex){
-            sourceList->edges[i].weight = weight;
-        }
-    }
-
-    for(int i = 0; i < destinationList->numberOfEdges; i++){// delete the edge from the destination vertex
-        if (destinationList->edges[i].destinationVertex == sourceVertex){
-            destinationList->edges[i].weight = weight;
-        }
-    }
-
-    return *graph;
-}
-
-Graph* deleteEdge(Graph **graph, int sourceVertex, int destinationVertex){
-    int err = 0;
-    if (sourceVertex > (*graph)->numberOfVertices || destinationVertex > (*graph)->numberOfVertices){
-        if (firstOutput)
-        {
-            printf("Deletion failed");
-            firstOutput = 0;
-        }else{
-            printf("\nDeletion failed");
-        }
-        return *graph;
-    }else{
-        AdjList *sourceList = &(*graph)->lists[sourceVertex];
-        AdjList *destinationList = &(*graph)->lists[destinationVertex];
-
-        for(int i = 0; i < sourceList->numberOfEdges; i++){// delete the edge from the source vertex
-            if (sourceList->edges[i].destinationVertex == destinationVertex){
-                sourceList->numberOfEdges--;
-                for (int j = i; j < (sourceList->numberOfEdges); j++)
-                {
-                    sourceList->edges[j] = sourceList->edges[j + 1];
-                }
-                break;
-            }
-        }
-
-        for(int i = 0; i < destinationList->numberOfEdges; i++){// delete the edge from the destination vertex
-            if (destinationList->edges[i].destinationVertex == sourceVertex){
-                destinationList->numberOfEdges--;
-                for (int j = i; j < (destinationList->numberOfEdges); j++)
-                {
-                    destinationList->edges[j] = destinationList->edges[j + 1];
-                }
-                break;
-            }
-        }
-        return *graph;
+    if (smallest != i) {
+        swapNodes(priorityQ, i, smallest);
+        heapify(priorityQ, smallest);
     }
 }
 
-int main(void){
-    int temp1;
-    int temp2;
-    Graph *graph;
-    char line[50];
-    fgets(line, sizeof(line), stdin);
-    sscanf(line, "%d %d", &temp1, &temp2);
-    graph = initialiseGraph(temp1);
-    if (graph == NULL)
-    {
-        printf("Initialization failed");
+
+// Min heapify - bottom-up
+void minHeapify(PriorityQueue *priorityQ, int i) {
+    int smallest = i;
+    int left = 2 * i + 1;
+    int right = 2 * i + 2;
+
+    if (left < priorityQ->size && priorityQ->distance[left] < priorityQ->distance[smallest]) {
+        smallest = left;
     }
-    for (int i = 0; i < temp2; i++)
-    {
-        int source, destination, weight;
-        fgets(line, sizeof(line), stdin);
-        sscanf(line, "(%d, %d, %d)", &source, &destination, &weight);
-        if (!insertEdge(graph, source, destination, weight))
-        {
-            if (firstOutput)
-            {
-                printf("Initialisation failed");
-                firstOutput = 0;
-            }else{
-                printf("\nInitialisation failed");
-            }
-            
-            break;
+    if (right < priorityQ->size && priorityQ->distance[right] < priorityQ->distance[smallest]) {
+        smallest = right;
+    }
+
+    if (smallest != i) {
+        swapNodes(priorityQ, i, smallest);
+        minHeapify(priorityQ, smallest);
+    }
+}
+
+
+int extractMin(PriorityQueue *priorityQ) {
+    if (priorityQ->size <= 0) return -1;
+
+    int root = priorityQ->elements[0];
+    priorityQ->size--;
+    priorityQ->elements[0] = priorityQ->elements[priorityQ->size];
+    priorityQ->distance[0] = priorityQ->distance[priorityQ->size];
+    priorityQ->position[priorityQ->elements[0]] = 0;
+    priorityQ->position[root] = -1; // This vertex is no longer in the heap
+
+    heapify(priorityQ, 0);
+
+    return root;
+}
+
+
+int isEmpty(PriorityQueue *priorityQ) {
+    return priorityQ->size == 0;
+}
+
+
+void decreaseKey(PriorityQueue *priorityQ, int vertex, int dist) {
+    int i = priorityQ->position[vertex];
+    if (i == -1 || priorityQ->distance[i] <= dist) return;  // No update needed if new distance is not better
+
+    priorityQ->distance[i] = dist;
+
+    while (i != 0 && priorityQ->distance[(i - 1) / 2] > priorityQ->distance[i]) {
+        priorityQ->position[priorityQ->elements[i]] = (i - 1) / 2;
+        priorityQ->position[priorityQ->elements[(i - 1) / 2]] = i;
+        swapNodes(priorityQ, i, (i - 1) / 2);
+        i = (i - 1) / 2;
+    }
+}
+
+
+void freePriorityQueue(PriorityQueue *priorityQ) {
+    free(priorityQ->elements);
+    free(priorityQ->distance);
+    free(priorityQ->position);
+    free(priorityQ);
+}
+
+
+// Create a graph
+Graph* initialiseGraph(int vertices) {
+    Graph* graph = (Graph*)malloc(sizeof(Graph));// Alloc. mem. for graph
+    if (graph == NULL) return NULL;// Alloc. failed
+    graph->numberOfVertices = vertices;
+    graph->adjList = (Node**)malloc(vertices * sizeof(Node*));
+    if (graph->adjList == NULL) { 
+        free(graph);
+        return NULL;
+    }
+
+    for (int i = 0; i < vertices; i++) {
+        graph->adjList[i] = NULL;
+    }
+    return graph;
+}
+
+
+// ---------------------------- Add an edge to the graph ----------------------------
+void addEdge(Graph* graph, int source, int destination, int weight) {
+    if (source < 0 || source > graph->numberOfVertices || destination < 0 || destination > graph->numberOfVertices || weight < 0 || source == destination) {
+        printf(firstOutput ? "insert %d %d failed" : "\ninsert %d %d failed", source, destination);
+        firstOutput = 0;
+        return;
+    }
+    // Check if the edge already exists
+    Node* currentNode = graph->adjList[source];
+    while (currentNode != NULL) {
+        if (currentNode->destinationVertex == destination) {
+            printf(firstOutput ? "insert %d %d failed" : "\ninsert %d %d failed", source, destination);
+            firstOutput = 0;
+            return;
         }
+        currentNode = currentNode->next;
+    }
+    // Create a new nodes for source and destination
+    Node* newSourceNode = (Node*)malloc(sizeof(Node));
+    Node* newDestinationNode = (Node*)malloc(sizeof(Node));
+    if (!newSourceNode || !newDestinationNode) {
+        printf(firstOutput ? "insert %d %d failed" : "\ninsert %d %d failed", source, destination);
+        firstOutput = 0;
+        return;
+    }
+    // Add an edge from source to destination
+    newSourceNode->destinationVertex = destination;
+    newSourceNode->weight = weight;
+    newSourceNode->next = graph->adjList[source];
+    graph->adjList[source] = newSourceNode;
+    // Add an edge from destination to source
+    newDestinationNode->destinationVertex = source;
+    newDestinationNode->weight = weight;
+    newDestinationNode->next = graph->adjList[destination];
+    graph->adjList[destination] = newDestinationNode;
+}
+
+
+//----------------------------- Dijkstra's algorithm ---------------------------- 
+
+void printPath(int parent[], int j) {
+    if (parent[j] == -1)
+        return;
+    printPath(parent, parent[j]);
+    printf(", %d", j);
+}
+
+
+void outputSolution(int dist[], int n, int parent[], int src, int target) {
+    int src_vertex = src;
+    if (dist[target] == INT_MAX) {
+       printf(firstOutput ? "search %d %d failed" : "\nsearch %d %d failed", src, target);
+        firstOutput = 0;
+        return;
         
+    } else {
+        if (firstOutput) {
+            printf("%d: [%d", dist[target], src);
+            firstOutput = 0;  
+        } else {
+            printf("%d: [%d", dist[target], src);
+        }
+        printPath(parent, target);
+        printf("]");
     }
-    //displayGraph(graph);
-    
+}
 
 
-    while(fgets(line, sizeof(line), stdin) != NULL){
-        char opCode;
-        sscanf(line, "%c", &opCode);
-        int success = 1;
+// Dijkstra's algorithm
+void searchPath(Graph* graph, int sourceVertex, int destinationVertex) {
+    if (!validateVertex(graph, sourceVertex) || !validateVertex(graph, destinationVertex)) {// Check if the vertices are valid
+        printf(firstOutput ? "search %d %d failed" : "\nsearch %d %d failed", sourceVertex, destinationVertex);
+        firstOutput = 0;
+        return;
+    }
 
-        switch (opCode)
-        {
-        case 's':
-            if (sscanf(line+2, "%d %d", &temp1, &temp2) == 2)
-            {
-                searchPath(temp1, temp2, graph);
-            }else{
-                if (firstOutput)
-                {
-                    printf("Search failed");
-                    firstOutput = 0;
-                }else{
-                    printf("\nSearch failed");
-                }
+    int V = graph->numberOfVertices;
+    //int dist[V], parent[V];
+    int *distance = (int*)malloc(V * sizeof(int));
+    int *parent = (int*)malloc(V * sizeof(int));
+    PriorityQueue *priorityQ = createPriorityQueue(V);// Create a priority queue
+
+    // Initialize the priority queue and the arrays
+    for (int i = 0; i < V; i++) {
+        distance[i] = INT_MAX;
+        parent[i] = -1;
+        insertIntoPriorityQueue(priorityQ, i, distance[i]);
+    }
+
+    distance[sourceVertex] = 0;
+    decreaseKey(priorityQ, sourceVertex, distance[sourceVertex]);  // Update the distance of source in priority queue
+
+    while (!isEmpty(priorityQ)) {
+        int u = extractMin(priorityQ);
+        if (u == -1 || distance[u] == INT_MAX) break; // Stop if no valid vertex or unreachable vertex
+
+        Node* temp = graph->adjList[u];
+        while (temp != NULL) {
+            int v = temp->destinationVertex;
+            int weight = temp->weight;
+            if (distance[u] + weight < distance[v]) { // Relax the edge (u, v)
+                distance[v] = distance[u] + weight;
+                parent[v] = u;
+                decreaseKey(priorityQ, v, distance[v]); // Update the distance in priority queue
             }
-            break;
-        
-        case 'i':
-            int weight;
-            if (sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)
-            {
-                success = insertEdge(graph, temp1, temp2, weight);
-
-            }else{
-                success = 0;
-            }
-            if (!success)
-            {
-                if (firstOutput)
-                {
-                    printf("Insertion failed");
-                    firstOutput = 0;
-                }else{
-                    printf("\nInsertion failed");
-                }
-            }
-            //displayGraph(graph);
-            break;
-
-        case 'u':
-            if (sscanf(line+2, "%d %d %d", &temp1, &temp2, &weight) == 3)
-            {
-                graph = update(&graph, temp1, temp2, weight);
-            }else{
-                if (firstOutput)
-                {
-                    printf("Update failed");
-                    firstOutput = 0;
-                }else{
-                    printf("\nUpdate failed");
-                }
-            }
-            break;
-
-        case 'd':
-            if(sscanf(line+2, "%d %d", &temp1, &temp2) == 2)
-            {
-                graph = deleteEdge(&graph, temp1, temp2);
-            }else{
-                if (firstOutput)
-                {
-                    printf("Deletion failed");
-                    firstOutput = 0;
-                }else{
-                    printf("\nDeletion failed");
-                }
-            }
-            break;
-
-        default:
-            break;
+            temp = temp->next;
         }
     }
 
+    freePriorityQueue(priorityQ);
+
+    if (distance[destinationVertex] == INT_MAX) {
+        printf(firstOutput ? "search %d %d failed" : "\nsearch %d %d failed", sourceVertex, destinationVertex);
+        firstOutput = 0;
+    } else {
+        if (!firstOutput) printf("\n");
+        outputSolution(distance, V, parent, sourceVertex, destinationVertex);
+        firstOutput = 0;
+    }
+    free(distance);
+    free(parent);
+}
+
+
+// ---------------------------- Remove edge from the graph ----------------------------
+// Remove an edge from the adjacency list - helper function
+int removeEdge(Node** adjList, int src, int destinationVertex) {
+    Node **ptr = &adjList[src], *temp;
+    while (*ptr) {
+        if ((*ptr)->destinationVertex == destinationVertex) {
+            temp = *ptr;
+            *ptr = (*ptr)->next;
+            free(temp);
+            return 1;
+        }
+        ptr = &((*ptr)->next);
+    }
     return 0;
 }
+
+
+// Delete an edge from the graph
+void deleteEdge(Graph* graph, int src, int dest) {
+    if (src < 0 || src >= graph->numberOfVertices || dest < 0 || dest >= graph->numberOfVertices) {
+        printf(firstOutput ? "delete %d %d failed" : "\ndelete %d %d failed", src, dest);
+        firstOutput = 0;
+        return;
+    }
+    // Usage of helper functions
+    int found = removeEdge(graph->adjList, src, dest);// Remove the edge from source to destination
+    found += removeEdge(graph->adjList, dest, src);// Remove the edge from destination to source
+
+    if (found < 2) {  // If either of the ected edges wasn't found
+        printf(firstOutput ? "delete %d %d failed" : "\ndelete %d %d failed", src, dest);
+        firstOutput = 0;
+    }
+}
+
+
+// ---------------------------- Update the weight of an edge in the graph ----------------------------
+// Update the weight of an edge in the graph
+int checkAndUpdate(Node* list, int target, int change) {
+    Node* temp = list;
+    // Traverse the list
+    while (temp != NULL) {
+        if (temp->destinationVertex == target) {
+            if (temp->weight + change < 0) {  
+                return 0;
+            }
+            temp->weight += change;
+            return 1;
+        }
+        temp = temp->next;
+    }
+    return 0;
+}
+
+
+void updateEdge(Graph* graph, int source, int destination, int affection) {
+    if (source < 0 || source > graph->numberOfVertices || destination < 0 || destination >= graph->numberOfVertices) {
+        printf(firstOutput ? "update %d %d failed" : "\nupdate %d %d failed", source, destination);
+        firstOutput = 0;
+        return;
+    }
+
+    if (!checkAndUpdate(graph->adjList[source], destination, affection) || !checkAndUpdate(graph->adjList[destination], source, affection)) {
+        printf(firstOutput ? "update %d %d failed" : "\nupdate %d %d failed", source, destination);
+        firstOutput = 0;
+    }
+}
+
+
+// ---------------------------- Assisting functions ----------------------------
+// Print the graph
+void printGraph(Graph* graph) {
+    for (int v = 0; v < graph->numberOfVertices; v++) {
+        Node* temp = graph->adjList[v];
+        printf("\n Vertex %d:\n head", v);
+        while(temp) {
+            printf(" -> %d(%d)", temp->destinationVertex, temp->weight);
+            temp = temp->next;
+        }
+        printf("\n");
+    }
+}
+
+
+void freeGraph(Graph* graph) {
+    for (int i = 0; i < graph->numberOfVertices; i++) {
+        Node* temp = graph->adjList[i];
+        while (temp != NULL) {
+            Node* toDelete = temp;
+            temp = temp->next;
+            free(toDelete);
+        }
+    }
+    free(graph->adjList);
+    free(graph);
+}
+
+
+// ---------------------------- Main function ----------------------------
+int main() {
+    int N, M;
+    scanf(" %d %d", &N, &M);
+    Graph *graph = initialiseGraph(N);
+
+    for (int i = 0; i < M; i++) {
+        int from, to, weight;
+        scanf(" (%d, %d, %d)", &from, &to, &weight); 
+        addEdge(graph, from, to, weight);
+    }
+
+    char operation;
+    while (scanf(" %c", &operation) != EOF) {
+        int temp1, temp2, weight;
+        switch (operation) {
+            case 'i':// Insert
+                if (scanf(" %d %d %d", &temp1, &temp2, &weight) == 3);
+                addEdge(graph, temp1, temp2, weight);
+                break;
+            case 'd':// Delete
+                if (scanf(" %d %d", &temp1, &temp2) == 2);
+                deleteEdge(graph, temp1, temp2);
+                break;
+            case 'u':// Update
+                if (scanf(" %d %d %d", &temp1, &temp2, &weight) == 3);
+                updateEdge(graph, temp1, temp2, weight);
+                break;
+            case 's':// Search
+                if (scanf(" %d %d", &temp1, &temp2) == 2);
+                searchPath(graph, temp1, temp2);
+                break;
+            case 'p':// Print
+                printGraph(graph);
+                break;
+        }
+    }
+
+    freeGraph(graph);
+    return 0;
+}
+

@@ -2,6 +2,7 @@
     "files.associations": {
         "1_2": "c",
         "stdio.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "dejvido": "c"
     }
 }

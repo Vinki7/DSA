@@ -274,12 +274,12 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
                 minHeap->elements[minHeap->sizeOfHeap].vertex = v;
                 minHeap->elements[minHeap->sizeOfHeap].distance = distances[v];
                 minHeap->sizeOfHeap++;
-            }
 
-            int i = minHeap->sizeOfHeap - 1;// Index of the inserted element
-            while (i != 0 && minHeap->elements[(i - 1) / 2].distance > minHeap->elements[i].distance) {// While the parent is greater than the child
-                swapMinHeapNodes(&minHeap->elements[i], &minHeap->elements[(i - 1) / 2]);
-                i = (i - 1) / 2;// Move to the parent
+                int i = minHeap->sizeOfHeap - 1;// Index of the inserted element
+                while (i != 0 && minHeap->elements[(i - 1) / 2].distance > minHeap->elements[i].distance) {// While the parent is greater than the child
+                    swapMinHeapNodes(&minHeap->elements[i], &minHeap->elements[(i - 1) / 2]);
+                    i = (i - 1) / 2;// Move to the parent
+                }
             }
             currentEdge = currentEdge->next;
         }
