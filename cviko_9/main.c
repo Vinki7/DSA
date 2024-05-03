@@ -415,6 +415,7 @@ int main() {
         addEdge(graph, from, to, weight);
     }
 
+    printGraph(graph);
     char operation;
     while (scanf(" %c", &operation) != EOF) {
         int temp1, temp2, weight;
