@@ -11,6 +11,12 @@ typedef struct edge{
     struct edge* next;//pointer to the next edge
 } Edge;
 
+typedef struct outputEdge{
+    int source;//source vertex
+    int destination;//destination vertex
+    int weight;//weight of the edge
+} OutputEdge;
+
 typedef struct graph{
     int numberOfVertices;//number of vertices
     Edge** edges;//array of pointers to edges
@@ -26,6 +32,11 @@ typedef struct minHeap{
     int size;
     int capacity;
 }MinHeap;
+
+void newLineHandler(){
+    printf("%s", (firstOutput) ? "" : "\n");
+    firstOutput = 0;
+}
 
 //-------------------------------- MinHeap functions --------------------------------
 /*MinHeap* createMinHeap(int capacity){
@@ -56,8 +67,8 @@ void freeMinHeap(MinHeap *minHeap){
  * @param a pointer to the first edge
  * @param b pointer to the second edge
 */
-void swapEdges(Edge *a, Edge *b){
-    Edge temp = *a;
+void swapEdges(OutputEdge *a, OutputEdge *b){
+    OutputEdge temp = *a;
     *a = *b;
     *b = temp;
 }
@@ -70,10 +81,10 @@ void swapEdges(Edge *a, Edge *b){
  * @param high upper bound of the array
  * @return int partition point
 */
-int findPartition(Edge edges[], int low, int high){
+int findPartition(OutputEdge edges[], int low, int high){
     
     // rightmost element as pivot
-    Edge pivot = edges[high];
+    OutputEdge pivot = edges[high];
 
     // pointer for greater element
     int greater = (low - 1);
@@ -108,7 +119,7 @@ int findPartition(Edge edges[], int low, int high){
  * @param low lower bound of the array
  * @param high upper bound of the array
 */
-void quickSort(Edge edges[], int low, int high){
+void quickSort(OutputEdge edges[], int low, int high){
     if (low < high) {// low = edges[0], high = edges[n-1]
 
         // find the element where the elements smaller than it are on the left and the elements greater than it are on the right
@@ -120,12 +131,11 @@ void quickSort(Edge edges[], int low, int high){
     }
 }
 
-void printEdges(Edge edges[], int numOfVertices){
+void printEdges(OutputEdge edges[], int numOfVertices){
     
-    printf("%c", (firstOutput) ? '\0' : '\n');
-    firstOutput = 0;
+    newLineHandler();
     long long int cost = 0;
-    for (int i = 1; i < numOfVertices; i++) {
+    for (int i = 0; i < numOfVertices; i++) {
         cost += edges[i].weight;
     }
     printf("%lld: ", cost);
@@ -198,11 +208,11 @@ void deleteEdge(Graph* graph, int source, int destination){
         {
             temp = *vertexPointer;
             *vertexPointer = (*vertexPointer)->next;
-            free(temp);
             break;
         }
         vertexPointer = &(*vertexPointer)->next;
     }
+    free(temp);
 }
 
 Edge* findEdge(Graph* graph, int source, int destination){
@@ -218,8 +228,8 @@ Edge* findEdge(Graph* graph, int source, int destination){
 }
 
 void updateEdge(Edge *AtoB_edge, Edge *BtoA_edge, int weight){
-    AtoB_edge->weight = weight;
-    BtoA_edge->weight = weight;
+    AtoB_edge->weight += weight;
+    BtoA_edge->weight += weight;
 }
 
 void primSearch(Graph* graph, int sourceVertex){//wrong implementation 
@@ -240,7 +250,7 @@ void primSearch(Graph* graph, int sourceVertex){//wrong implementation
         parent[i] = INT_MAX;
     }
 
-    key[sourceVertex] = 0;
+    key[sourceVertex] = 0;// weight of the source vertex is 0
     parent[sourceVertex] = -1;
 
     for (int count = 0; count < vertices; count++)
@@ -273,30 +283,37 @@ void primSearch(Graph* graph, int sourceVertex){//wrong implementation
     }
     
     // Edge array to store the edges of the MST
-    Edge *edges = (Edge*)malloc((vertices - 1) * sizeof(Edge));
+    OutputEdge *edges = (OutputEdge*)malloc((vertices - 1) * sizeof(OutputEdge));
     int edgeIndex = 0;
     for (int i = 0; i < vertices; i++)
     {
         if (parent[i] != -1)
         {
-            if (parent[i] > i)
-            {
-                edges[edgeIndex].source = i;
-                edges[edgeIndex].destination = parent[i];
+            if (parent[i] != INT_MAX){
+                if (parent[i] > i)
+                {
+                    edges[edgeIndex].source = i;
+                    edges[edgeIndex].destination = parent[i];
+                    edges[edgeIndex].weight = key[i];
+                    edgeIndex++;
+                    continue;
+                }
+                
+                edges[edgeIndex].source = parent[i];
+                edges[edgeIndex].destination = i;
                 edges[edgeIndex].weight = key[i];
                 edgeIndex++;
-                continue;
             }
-            
-            edges[edgeIndex].source = parent[i];
-            edges[edgeIndex].destination = i;
-            edges[edgeIndex].weight = key[i];
-            edgeIndex++;
         }
     }
 
-    quickSort(edges, 0, vertices - 2);
-    printEdges(edges, vertices - 1);
+    quickSort(edges, 0, edgeIndex - 1);
+    printEdges(edges, edgeIndex);
+    // Free the memory
+    free(edges);
+    free(key);
+    free(parent);
+    free(inMST);
 }
 
 void printGraph(Graph* graph){
@@ -331,7 +348,7 @@ int main(void){
             scanf(" %d, %d, %d)", &source, &destination, &weight);
             if (source >= numberOfVertices || destination >= numberOfVertices || source < 0 || destination < 0 || source == destination)
             {
-                printf("%c", (firstOutput) ? '\0' : '\n');
+                newLineHandler();
                 printf("insert %d %d failed", source, destination);
             } else{
                 addEdge(graph, source, destination, weight);
@@ -346,7 +363,7 @@ int main(void){
             scanf("%d %d %d", &source, &destination, &weight);
             if (source >= numberOfVertices || destination >= numberOfVertices || source < 0 || destination < 0 || source == destination || findEdge(graph, source, destination) != NULL)
             {
-                printf("%c", (firstOutput) ? '\0' : '\n');
+                newLineHandler();
                 printf("insert %d %d failed", source, destination);
             } else{
                 addEdge(graph, source, destination, weight);
@@ -357,7 +374,7 @@ int main(void){
             scanf("%d %d", &source, &destination);
             if (source >= numberOfVertices || destination >= numberOfVertices || source < 0 || destination < 0 || source == destination || findEdge(graph, source, destination) == NULL)
             {
-                printf("%c", (firstOutput) ? '\0' : '\n');
+                newLineHandler();
                 printf("delete %d %d failed", source, destination);
             } else{
                 deleteEdge(graph, source, destination);
@@ -368,14 +385,14 @@ int main(void){
             scanf("%d %d %d", &source, &destination, &weight);
             if (source >= numberOfVertices || destination >= numberOfVertices || source < 0 || destination < 0 || source == destination || findEdge(graph, source, destination) == NULL)
             {
-                printf("%c", (firstOutput) ? '\0' : '\n');
+                newLineHandler();
                 printf("update %d %d failed", source, destination);
             } else{
                 Edge *AtoB_edge = findEdge(graph, source, destination);
                 Edge *BtoA_edge = findEdge(graph, destination, source);
                 if (AtoB_edge == NULL || BtoA_edge == NULL)
                 {
-                    printf("%c", (firstOutput) ? '\0' : '\n');
+                    newLineHandler();
                     printf("update %d %d failed", source, destination);
                 } else{
                     updateEdge(AtoB_edge, BtoA_edge, weight);
@@ -385,12 +402,14 @@ int main(void){
 
         case 's':
             scanf(" %d", &vertex);
-            if (vertex >= numberOfVertices || vertex < 0)
+            if (vertex >= numberOfVertices || vertex < 0 || graph->edges[vertex] == NULL)
             {
-                printf("%c", (firstOutput) ? '\0' : '\n');
+                newLineHandler();
                 printf("search %d failed", vertex);
                 break;
             }  
+            
+            
             primSearch(graph, vertex);
             break;
 
