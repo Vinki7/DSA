@@ -11,55 +11,154 @@ typedef struct edge{
     struct edge* next;//pointer to the next edge
 } Edge;
 
-typedef struct outputEdge{
+typedef struct sortNode{
     int source;//source vertex
     int destination;//destination vertex
     int weight;//weight of the edge
-} HeapNode;
+} SortNode;
 
 typedef struct graph{
     int numberOfVertices;//number of vertices
     Edge** edges;//array of pointers to edges
 } Graph;
 
-/*typedef struct heapNode {
-    int vertex;  // Vertex number
-    int weight;     // Key value used to build the MST
-} HeapNode;*/
+// -------------------------------- Priority Queue structure --------------------------------
 
-typedef struct minHeap{
-    HeapNode *elements;
+// Node structure for the priority queue
+typedef struct queueNode {
+    int vertex;  // Vertex number
+    int weight;  // Key value used to build the MST
+} QueueNode;
+
+// Priority queue structure
+typedef struct priorQueue{
+    QueueNode *elements;
     int size;
     int capacity;
-}MinHeap;
+    int *position;
+}PriorQueue;
 
 void newLineHandler(){
     printf("%s", (firstOutput) ? "" : "\n");
     firstOutput = 0;
 }
 
-//-------------------------------- MinHeap functions --------------------------------
-/*MinHeap* createMinHeap(int capacity){
-    MinHeap* minHeap = (MinHeap*)malloc(sizeof(MinHeap));
-    minHeap->elements = (Edge**)malloc(capacity * sizeof(Edge*));
-    minHeap->size = 0;
-    minHeap->capacity = capacity;
-    return minHeap;
+// -------------------------------- Priority Queue functions --------------------------------
+PriorQueue* createPriorQueue(int capacity);
+void swapNodes(QueueNode* a, QueueNode* b);
+void insertPriorQueue(PriorQueue* queue, int vertex, int key);
+QueueNode extractMin(PriorQueue* heap);
+void minHeapify(PriorQueue* heap, int index);
+void decreaseKey(PriorQueue* heap, int vertex, int key);
+int isInPriorQueue(PriorQueue* heap, int vertex);
+
+// Function to create a priority queue
+PriorQueue* createPriorQueue(int capacity){
+    PriorQueue* queue = (PriorQueue*)malloc(sizeof(PriorQueue));
+    queue->elements = (QueueNode*)malloc(capacity * sizeof(QueueNode));
+    queue->size = 0;
+    queue->capacity = capacity;
+    queue->position = (int*)malloc(capacity * sizeof(int));
+    return queue;
 }
 
-void insertToMinHeap(MinHeap *minHeap, Edge *edge){
+void swapNodes(QueueNode* a, QueueNode* b){
+    QueueNode temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void insertPriorQueue(PriorQueue* queue, int vertex, int key) {
+    if (queue->size == queue->capacity) {
+        queue->capacity *= 2;
+        queue->elements = (QueueNode*)realloc(queue->elements, queue->capacity * sizeof(QueueNode));
+    }
+
+    int i = queue->size;
+    queue->size++;
+    queue->elements[i].vertex = vertex;
+    queue->elements[i].weight = key;
+    queue->position[vertex] = i;
+
+    while (i != 0 && queue->elements[(i - 1) / 2].weight > queue->elements[i].weight) {
+        swapNodes(&queue->elements[i], &queue->elements[(i - 1) / 2]);
+        queue->position[queue->elements[i].vertex] = i;
+        queue->position[queue->elements[(i - 1) / 2].vertex] = (i - 1) / 2;
+        i = (i - 1) / 2;
+    }
+
+}
+
+
+QueueNode extractMin(PriorQueue *queue) {
+    if (queue->size <= 0) {
+        return (QueueNode) {INT_MAX, INT_MAX}; // Empty heap
+    }
+
+    if (queue->size == 1) {
+        queue->size--;
+        return queue->elements[0];
+    }
+
+    QueueNode root = queue->elements[0];
+    queue->elements[0] = queue->elements[queue->size - 1];
+    queue->position[root.vertex] = queue->size - 1;
+    queue->size--;
+    minHeapify(queue, 0);
+
+    return root;
+}
+
+void minHeapify(PriorQueue *queue, int index) {
+    int minimum = index;
+    int leftChild = 2 * index + 1;
+    int rightChild = 2 * index + 2;
+
+    if (leftChild < queue->size && queue->elements[leftChild].weight < queue->elements[minimum].weight) {
+        minimum = leftChild;
+    }
+    if (rightChild < queue->size && queue->elements[rightChild].weight < queue->elements[minimum].weight) {
+        minimum = rightChild;
+    }
+    
+    // Swap the nodes if the minimum is not the root
+    if (minimum != index) {
+        QueueNode minimumNode = queue->elements[minimum];
+        QueueNode indexNode = queue->elements[index];
+
+        queue->position[minimumNode.vertex] = index;
+        queue->position[indexNode.vertex] = minimum;
+
+        swapNodes(&queue->elements[minimum], &queue->elements[index]);
+        minHeapify(queue, minimum);
+    }
     
 }
 
-Edge* extractMin(MinHeap *minHeap){
-    
+void decreaseKey(PriorQueue *queue, int vertex, int newKey) {
+    int i = queue->position[vertex];
+    queue->elements[i].weight = newKey;
+
+    while (i != 0 && queue->elements[(i - 1) / 2].weight > queue->elements[i].weight) {
+        swapNodes(&queue->elements[i], &queue->elements[(i - 1) / 2]);
+        queue->position[queue->elements[i].vertex] = i;
+        queue->position[queue->elements[(i - 1) / 2].vertex] = (i - 1) / 2;
+        i = (i - 1) / 2;
+    }
 }
 
-void freeMinHeap(MinHeap *minHeap){
-    free(minHeap->elements);
-    free(minHeap);
+int isInPriorQueue(PriorQueue *queue, int vertex) {
+    if (queue->position[vertex] < queue->size) {
+        return 1;
+    }
+    return 0;
 }
-*/
+
+void freePriorQueue(PriorQueue *queue){
+    free(queue->elements);
+    free(queue->position);
+    free(queue);
+}
 //-------------------------------- QuickSort functions --------------------------------
 /**
  * @brief Function to swap two edges
@@ -67,8 +166,8 @@ void freeMinHeap(MinHeap *minHeap){
  * @param a pointer to the first edge
  * @param b pointer to the second edge
 */
-void swapEdges(HeapNode *a, HeapNode *b){
-    HeapNode temp = *a;
+void swapEdges(SortNode *a, SortNode *b){
+    SortNode temp = *a;
     *a = *b;
     *b = temp;
 }
@@ -81,10 +180,10 @@ void swapEdges(HeapNode *a, HeapNode *b){
  * @param high upper bound of the array
  * @return int partition point
 */
-int findPartition(HeapNode edges[], int low, int high){
+int findPartition(SortNode edges[], int low, int high){
     
     // rightmost element as pivot
-    HeapNode pivot = edges[high];
+    SortNode pivot = edges[high];
 
     // pointer for greater element
     int greater = (low - 1);
@@ -119,7 +218,7 @@ int findPartition(HeapNode edges[], int low, int high){
  * @param low lower bound of the array
  * @param high upper bound of the array
 */
-void quickSort(HeapNode edges[], int low, int high){
+void quickSort(SortNode edges[], int low, int high){
     if (low < high) {// low = edges[0], high = edges[n-1]
 
         // find the element where the elements smaller than it are on the left and the elements greater than it are on the right
@@ -131,7 +230,7 @@ void quickSort(HeapNode edges[], int low, int high){
     }
 }
 
-void printEdges(HeapNode edges[], int numOfVertices){
+void printEdges(SortNode edges[], int numOfVertices){
     
     newLineHandler();
     long long int cost = 0;
@@ -146,6 +245,7 @@ void printEdges(HeapNode edges[], int numOfVertices){
     }
     printf("]");
 }
+
 
 //-------------------------------- Graph functions --------------------------------
 
@@ -233,60 +333,53 @@ void updateEdge(Edge *AtoB_edge, Edge *BtoA_edge, int weight){
 }
 
 void primSearch(Graph* graph, int sourceVertex){//wrong implementation 
-    // Define a data structure to store the key values
+    
     int vertices = graph->numberOfVertices;
-    int *key;
-    int *parent;
-    int *inMST;
 
-    // Initialize first known values
-    key = (int*)malloc(vertices * sizeof(int));
-    parent = (int*)malloc(vertices * sizeof(int));
-    inMST = (int*)calloc(vertices, sizeof(int));
-
-    for (int i = 0; i < vertices; i++)
-    {
+    // Initialize the priority queue
+    PriorQueue* queue = createPriorQueue(vertices);
+    int *parent = (int*)malloc(vertices * sizeof(int));
+    int *key = (int*)malloc(vertices * sizeof(int));
+    for (int i = 0; i < vertices; i++) {
+        parent[i] = -1;
         key[i] = INT_MAX;
-        parent[i] = INT_MAX;
-    }
+    }    
+    int *inMST = (int*)calloc(vertices, sizeof(int));
 
-    key[sourceVertex] = 0;// weight of the source vertex is 0
-    parent[sourceVertex] = -1;
+    // Insert the source vertex into the priority queue
+    // key value is 0
+    key[sourceVertex] = 0;
+    insertPriorQueue(queue, sourceVertex, key[sourceVertex]);
 
-    for (int count = 0; count < vertices; count++)
-    {
-        int source = -1;
-        for (int i = 0; i < vertices; i++)
-        {
-            if (!inMST[i] && (source == -1 || key[i] < key[source]))
-            {
-                source = i;
+    while (queue->size != 0) {
+        // Extract the vertex with the minimum key
+        QueueNode extractedNode = extractMin(queue);
+        inMST[extractedNode.vertex] = 1;
+
+        // Traverse through all adj. vertices of extracted vertex and update the keys
+        for (Edge* edge = graph->edges[extractedNode.vertex]; edge != NULL; edge = edge->next) {
+            int destination = edge->destination;
+            int weight = edge->weight;
+            
+            // If the destination vertex is not in MST and the weight of the edge is less than the key value
+            if (inMST[destination] == 0 && weight < key[destination]) {
+                key[edge->destination] = weight;
+                parent[destination] = extractedNode.vertex;
+                insertPriorQueue(queue, destination, key[destination]);
+                decreaseKey(queue, destination, key[destination]);
             }
         }
-
-        // Let's add the vertex to the MST
-        inMST[source] = 1;
-
-
-        // Update key and parent values of the adjacent vertices of the picked vertex.
-        for (Edge* currentEdge = graph->edges[source]; currentEdge != NULL; currentEdge = currentEdge->next) {
-            int destination = currentEdge->destination;
-            int weight = currentEdge->weight;
-
-            if (!inMST[destination] && weight < key[destination])
-            {
-                parent[destination] = source;
-                key[destination] = weight;
-            }
-        } 
-
     }
     
-    // Edge array to store the edges of the MST
-    HeapNode *edges = (HeapNode*)malloc((vertices - 1) * sizeof(HeapNode));
+    SortNode *edges = (SortNode*)malloc((vertices - 1) * sizeof(SortNode));
     int edgeIndex = 0;
     for (int i = 0; i < vertices; i++)
     {
+        if (inMST[i] == 0)
+        {
+            continue;
+        }
+        
         if (parent[i] != -1)
         {
             if (parent[i] != INT_MAX){
@@ -309,23 +402,13 @@ void primSearch(Graph* graph, int sourceVertex){//wrong implementation
 
     quickSort(edges, 0, edgeIndex - 1);
     printEdges(edges, edgeIndex);
+
     // Free the memory
     free(edges);
-    free(key);
-    free(parent);
     free(inMST);
-}
-
-void printGraph(Graph* graph){
-    for (int i = 0; i < graph->numberOfVertices; i++) {
-        Edge* currentEdge = graph->edges[i];
-        printf("Vertex %d: ", i);
-        while (currentEdge != NULL) {
-            printf("(%d, %d, %d) ", currentEdge->source, currentEdge->destination, currentEdge->weight);
-            currentEdge = currentEdge->next;
-        }
-        printf("\n");
-    }
+    free(parent);
+    free(key);
+    freePriorQueue(queue);
 }
 
 int main(void){
@@ -389,12 +472,12 @@ int main(void){
                 printf("update %d %d failed", source, destination);
             } else{
                 Edge *AtoB_edge = findEdge(graph, source, destination);
-                Edge *BtoA_edge = findEdge(graph, destination, source);
-                if (AtoB_edge == NULL || BtoA_edge == NULL)
+                if (AtoB_edge == NULL || AtoB_edge->weight + weight < 0)
                 {
                     newLineHandler();
                     printf("update %d %d failed", source, destination);
                 } else{
+                    Edge *BtoA_edge = findEdge(graph, destination, source);
                     updateEdge(AtoB_edge, BtoA_edge, weight);
                 }
             }
