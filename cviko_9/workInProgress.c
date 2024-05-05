@@ -30,7 +30,7 @@ typedef struct {
 } MinHeap;
 
 // --------------------------------------------- Min heap functions ---------------------------------------------
-MinHeap *createMinHeap(int heapCapacity){// Create a min heap - alloc. mem. for the heap and the array of elements
+MinHeap *createPriorQueue(int heapCapacity){// Create a min heap - alloc. mem. for the heap and the array of elements
     MinHeap *minHeap = (MinHeap *)malloc(sizeof(MinHeap));
     if (minHeap == NULL){
         return NULL;
@@ -235,7 +235,7 @@ void searchPath(int sourceVertex, int destinationVertex, Graph *graph){
 
     distances[sourceVertex] = 0;// Distance from the source vertex is 0
     
-    MinHeap *minHeap = createMinHeap(numberOfVertices);// Create a min heap
+    MinHeap *minHeap = createPriorQueue(numberOfVertices);// Create a min heap
     minHeap->elements[0].vertex = sourceVertex;// Root is the source vertex
     minHeap->elements[0].distance = distances[sourceVertex];// Distance from the source vertex is 0
     minHeap->sizeOfHeap = 1;// Size of the heap is 1
