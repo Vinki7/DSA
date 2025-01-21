@@ -1,25 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct node{ 
+typedef struct node{    // node handling
     long long id;
-    char firstname[22];
-    char lastname[22];
+    char firstname[24];
+    char lastname[24];
     char birthday[16];
     int height;
-
-    struct node *rightChild;   
-    struct node *leftChild;    
+    //struct node *parrent;  // parent pointer
+    struct node *rightChild;   // higher child
+    struct node *leftChild;    // lower child
 }Node;
 
-int height(Node* node) {
-    if (node == NULL) {
+int height(Node* node) {// get the height of the node
+    if (node == NULL) {// if the node is NULL, return 0
         return 0;
     }
-    return node->height;
+    return node->height;// return the height of the actuall node
 }
 
-int updateHeight(Node* node) {
+int updateHeight(Node* node) { // update the height of the node
     if (node == NULL) {
         return 0;
     }
@@ -30,15 +30,30 @@ int updateHeight(Node* node) {
 }
 
 Node* rightRotation(Node* subtreeParent){
-    Node* subLeftChild = subtreeParent->leftChild;
+    Node* subLeftChild = subtreeParent->leftChild;// these are just pointers!!! you are not copying the whole subtree, just the pointers to the nodes
     Node* subSubRightChild = subLeftChild->rightChild;
 
+    // Perform the rotation
     subLeftChild->rightChild = subtreeParent;
+    /*
+              A
+            /
+          B     -->    B
+        /            /  \\
+      C            C      A
+        \
+    */
     subtreeParent->leftChild = subSubRightChild;
+    /*
+        B
+       / \
+      C   A
+    */
+    // Update the heights
     updateHeight(subtreeParent);
     updateHeight(subLeftChild);
 
-
+    // Return the new root of the subtree (pointer)
     return subLeftChild;
 }
 
@@ -46,18 +61,18 @@ Node* leftRotation(Node* subtreeParent){
     Node* subRightChild = subtreeParent->rightChild;
     Node* subSubLeftChild = subRightChild->leftChild;
 
-
+    // Perform the rotation
     subRightChild->leftChild = subtreeParent;
     subtreeParent->rightChild = subSubLeftChild;
 
-
+    // Update the heights
     updateHeight(subtreeParent);
     updateHeight(subRightChild);
 
     return subRightChild;
 }
 
-int getBalanceCoeficient(Node* currentNode){
+int getBalanceCoeficient(Node* currentNode){// balancing the tree
     if (currentNode == NULL)
     {
         return 0;
@@ -65,52 +80,62 @@ int getBalanceCoeficient(Node* currentNode){
     return updateHeight(currentNode->leftChild) - updateHeight(currentNode->rightChild);
 }
 
-Node* insert(Node* root, long long inputId, char* inputFirstName, char* inputLastName, char* inputBirthday){
-    if (root == NULL) {
-        Node* newNode = (Node*)malloc(sizeof(Node));
+Node* insert(Node* root, long long inputId, char* inputFirstName, char* inputLastName, char* inputBirthday){// The function works well, fluently, without any issues
+    /* Thanks to the recursive approach, we can handle the insertion of the node in the AVL tree in a very simple way. When pointer which is passed
+     * to the function is NULL, we can simply allocate the memory for the new node and return it. it will blow up the stack and return the pointer of 
+     * the new node to the previous call of the function. This way we can easily handle the insertion of the node to the AVL tree.
+    */
+    if (root == NULL) { // Base case
+        Node* newNode = (Node*)malloc(sizeof(Node));// dynamically allocate the node (root)
+        if (newNode == NULL) {
+            printf("Memory allocation failure\n");
+            exit(EXIT_FAILURE);
+        }
         newNode->id = inputId;
-
+        // Copy strings using snprintf, then change the height and children pointers
         snprintf(newNode->lastname, sizeof(newNode->lastname), "%s", inputLastName);
         snprintf(newNode->firstname, sizeof(newNode->firstname), "%s", inputFirstName);
         snprintf(newNode->birthday, sizeof(newNode->birthday), "%s", inputBirthday);
-        newNode->height = 1;
+        newNode->height = 1;// the height of the new node
         newNode->leftChild = NULL;
         newNode->rightChild = NULL;
         return newNode;
     }
 
+    // Insert node recursively to the avlTree ==> readability is improved by recursive approach, simulates the real life algorithm behavior
     if (inputId < root->id) {
-        root->leftChild = insert(root->leftChild, inputId, inputFirstName, inputLastName, inputBirthday);
+        root->leftChild = insert(root->leftChild, inputId, inputFirstName, inputLastName, inputBirthday);// try to insert to the left child
     } else if (inputId > root->id) {
-        root->rightChild = insert(root->rightChild, inputId, inputFirstName, inputLastName, inputBirthday);
+        root->rightChild = insert(root->rightChild, inputId, inputFirstName, inputLastName, inputBirthday);// try to insert to the right child
     } else {
-        //printf("Duplicite ID: %lld\n", inputId);
+        // Duplicate IDs are not allowed
+        printf("Duplicate ID: %lld\n", inputId);
         return root;
-    }
+    }// up to this point, the code should be right, the issue is somewhere else
     
-    updateHeight(root);
+    updateHeight(root);// update the height of the current node
 
-    int balance = getBalanceCoeficient(root);
+    int balance = getBalanceCoeficient(root);// get the balance coeficient of the current node
 
-    if (balance > 1 && inputId < root->leftChild->id){
+    if (balance > 1 && inputId < root->leftChild->id){// left left case
         return rightRotation(root);
     }
     
-    if (balance < -1 && inputId > root->rightChild->id){
+    if (balance < -1 && inputId > root->rightChild->id){// right right case
         return leftRotation(root);
     }
 
-    if (balance > 1 && inputId > root->leftChild->id){
+    if (balance > 1 && inputId > root->leftChild->id){// left right case
         root->leftChild = leftRotation(root->leftChild);
         return rightRotation(root);
     }
 
-    if (balance < -1 && inputId < root->rightChild->id){
+    if (balance < -1 && inputId < root->rightChild->id){// right left case
         root->rightChild = rightRotation(root->rightChild);
         return leftRotation(root);
     }
 
-    return root;
+    return root;// return the node pointer of the unchanged node
 }
 
 void freeTree(Node* root){
@@ -145,128 +170,48 @@ void searchNode(Node* root, long long leftIntervalId, long long rightIntervalId,
     }
 }
 
-Node* lowestValue(Node* node) {
-    Node* current = node;
-    // Loop down to find the leftmost leaf
-    while (current && current->leftChild != NULL)
-        current = current->leftChild;
-    return current;
-}
-
-Node* nodeEvaporation(Node* root, long long id) {
-    if (root == NULL)
-        return root;
-
-    // If the value to be deleted is smaller than the root's value,
-    // then it lies in the left subtree
-    if (id < root->id)
-        root->leftChild = nodeEvaporation(root->leftChild, id);
-
-    // If the value to be deleted is greater than the root's value,
-    // then it lies in the right subtree
-    else if (id > root->id)
-        root->rightChild = nodeEvaporation(root->rightChild, id);
-
-    // If the value to be deleted is the same as the root's value, then this is the node to be deleted
-    else {
-        // Node with only one child or no child
-        if (root->leftChild == NULL) {
-            Node* temp = root->rightChild;
-            free(root);
-            return temp;
-        } else if (root->rightChild == NULL) {
-            Node* temp = root->leftChild;
-            free(root);
-            return temp;
-        }
-
-        // Node with two children: Get the inorder successor (smallest in the right subtree)
-        Node* temp = lowestValue(root->rightChild);
-
-        // Copy the inorder successor's content to this node
-        root->id = temp->id;
-        snprintf(root->lastname, sizeof(root->lastname), "%s", temp->lastname);
-        snprintf(root->firstname, sizeof(root->firstname), "%s", temp->firstname);
-        snprintf(root->birthday, sizeof(root->birthday), "%s", temp->birthday);
-
-        // Delete the inorder successor
-        root->rightChild = nodeEvaporation(root->rightChild, temp->id);
-    }
-    // Update height
-    root->height = updateHeight(root);
-
-    // Balance the tree
-    int balance = getBalanceCoeficient(root);
-
-    // Left Left Case
-    if (balance > 1 && getBalanceCoeficient(root->leftChild) >= 0){
-        return rightRotation(root);
-    }
-    
-    // Left Right Case
-    if (balance > 1 && getBalanceCoeficient(root->leftChild) < 0) {
-        root->leftChild = leftRotation(root->leftChild);
-        return rightRotation(root);
-    }
-
-    // Right Right Case
-    if (balance < -1 && getBalanceCoeficient(root->rightChild) <= 0){
-        return leftRotation(root);
-    }
-
-    // Right Left Case
-    if (balance < -1 && getBalanceCoeficient(root->rightChild) > 0) {
-        root->rightChild = rightRotation(root->rightChild);
-        return leftRotation(root);
-    }
-
-    return root;
-}
-
 int main(void){
-    Node* avlTree = NULL;
+    Node* avlTree = NULL;// pointer to the root of the AVL tree
     long long inputId;
     int firstOutputFlag = 0;
     char line[1024], inputFirstname[24], inputLastName[24], inputBirthDay[16], operation;
-    while (fgets(line, sizeof(line), stdin) != NULL)
+    while (fgets(line, sizeof(line), stdin) != NULL)// read the input line by line
     {
         if (sscanf(line, "%c", &operation) < 1){
             continue;
-        }
+        }// if there was nothing at the input, skip current iteration
 
         switch (operation)
         {
         case 'i':
-            sscanf(line+2, "%lld %23s %23s %15s", &inputId, inputFirstname, inputLastName, inputBirthDay);
+            sscanf(line+2, "%lld %23s %23s %15s", &inputId, inputFirstname, inputLastName, inputBirthDay);// parse for insertion
             avlTree = insert(avlTree, inputId, inputFirstname, inputLastName, inputBirthDay);
             break;
         
         case 's':
             long long leftIntervalId, rightIntervalId;
-            int numItemsRead = sscanf(line + 2, "%lld %lld", &leftIntervalId, &rightIntervalId);
-            if (numItemsRead < 1) {
-                printf("Invalid input for search operation.\n");
-                break;
+            int number_of_read = sscanf(line+2, "%lld", &leftIntervalId); 
+            
+            int num_items_read = sscanf(line + number_of_read + 3, "%lld", &rightIntervalId);
+            if (num_items_read <= 1) {//
+                rightIntervalId = leftIntervalId; // If no right interval ID provided, set it to left interval ID
+                searchNode(avlTree, leftIntervalId, rightIntervalId, &firstOutputFlag);
+            } else if (rightIntervalId < leftIntervalId) {
+                searchNode(avlTree, rightIntervalId, leftIntervalId, &firstOutputFlag);
+            } else {
+                searchNode(avlTree, leftIntervalId, rightIntervalId, &firstOutputFlag);
             }
-            if (numItemsRead == 1) {
-                rightIntervalId = leftIntervalId; // If only one ID is provided, set it to both left and right IDs
-            }
-            if (rightIntervalId < leftIntervalId) {
-                long long temp = leftIntervalId;
-                leftIntervalId = rightIntervalId;
-                rightIntervalId = temp;
-            }
-            searchNode(avlTree, leftIntervalId, rightIntervalId, &firstOutputFlag);
             break;
         
         case 'd':
-            long long deleteId;
-            sscanf(line + 2, "%lld", &deleteId);
-            avlTree = nodeEvaporation(avlTree, deleteId);
+            /* code */
             break;
+
         default:
             break;
         }
+        
+
     }
     freeTree(avlTree);
     return 0;

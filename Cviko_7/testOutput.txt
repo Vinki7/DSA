@@ -1,0 +1,103 @@
+2010.80     r
+--update    r
+1.00        r
+deletion failed
+--update
+2011.81 --wrong-result
+--update
+0.00
+--update
+2.00
+
+
+
+/*---- 2nd run -----*/
+2010.80     r
+--update    r
+1.00        r
+--delete    w
+2011.81     w
+--update    r
+0.00        r
+--update    r
+2.00        r
+/*----- 3rd run -----*/
+2010.80
+--update
+1.00
+--delete
+search failed
+--update
+0.00
+update failed
+search failed
+/*----- 1st run, new task -----*/
+2010.80     r
+--update    r
+1.00        r
+--delete    w
+2016.86     w
+--update    r
+0.00        r
+--update    w
+2.00        w
+/*----- 2nd run -----*/
+2010.80     r
+--update    r
+1.00        r
+--delete    r
+search failed   r
+--update    r
+0.00        r
+update failed   r
+search failed   r
+/*----- Partial test output -----*/
+i Thomas Sanford 1.1.2001 2017,81 -> 1514,85
+i Nathan Flores 18.4.2002 6689,79 -> -1100,55
+i Michelle Palmer 12.7.1999 7205,98
+i Angelica Olsen 25.2.1991 6511,68 -> 569,20
+i Kevin Taylor 21.9.1969 7573,79
+i Brian Hutchinson 5.9.1953 1531,69 -> -2363,20
+i Joseph Hunter 15.5.1986 805,16
+i Anthony White 6.5.1958 8013,22
+i James Anderson 23.4.2002 7694,99 -> -329,97
+i Lori Mcknight 20.8.1976 1584,38 -> 1081,23
+i Christopher Bryant 28.2.1962 229,57
+i Kayla Jones 3.6.1962 9065,65 -> -206,37
+i Hannah West 2.2.1993 8237,84 -> 457,97
+i Jocelyn Frey 11.8.1954 3762,70 -> -985,99
+i Megan Collins 29.12.1988 7481,26
+i Victoria Peck 6.9.1988 5301,50
+i Jason Stafford 18.1.1974 2866,75
+i Jean Johnson 27.3.1988 6950,36
+i Grace Obrien 22.6.1981 2796,93
+i Laura Ward 20.1.1999 7579,02 -> -1195,77
+update
+update
+7481.26 --69
+update
+update
+update
+update
+2866.75 --71
+457.97 --67
+update
+2017.81 --55
+update
+update
+update
+update
+update
+delete --73
+update
+-328.03 --63
+229.57 --65
+-2362.80 --60
+i Christopher Powell 6.2.1966 91,21
+
+/*----- Debugging -----*/
+i James Anderson 23.4.2002 7694,99
+s James Anderson 23.4.2002
+u James Anderson 23.4.2002 -329,97
+s James Anderson 23.4.2002
+^Z
